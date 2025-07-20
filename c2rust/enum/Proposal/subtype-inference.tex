@@ -12,12 +12,24 @@
 \usepackage{enumitem}
 \usepackage{xcolor}
 \usepackage{simplebnf}
+\usepackage[margin=0.75in]{geometry}
+\usepackage{framed}
 
-% Define Rust language for listings
+\setlength{\jot}{6pt}
+
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
 \lstdefinelanguage{Rust}{
-  keywords={break, const, continue, crate, else, enum, extern, false, fn, for, if, impl, in, let, loop, match, mod, move, mut, pub, ref, return, self, Self, static, struct, super, trait, true, type, unsafe, use, where, while, as, async, await, dyn},
+  keywords={break, const, continue, crate, else, enum, extern, false, fn, for, 
+if, impl, in, let, loop, match, mod, move, mut, pub, ref, return, self, Self, 
+static, struct, super, trait, true, type, unsafe, use, where, while, as, async, 
+await, dyn},
   keywordstyle=\color{magenta},
-  ndkeywords={u8, u16, u32, u64, usize, i8, i16, i32, i64, isize, f32, f64, str, String, char, bool, Option, Result, Some, None, Ok, Err, Box, Vec},
+  ndkeywords={u8, u16, u32, u64, usize, i8, i16, i32, i64, isize, f32, f64, str,
+ String, char, bool, Option, Result, Some, None, Ok, Err, Box, Vec},
   ndkeywordstyle=\color{blue},
   identifierstyle=\color{black},
   sensitive=true,
@@ -28,14 +40,6 @@
   morestring=[b]",
   morestring=[b]'
 }
-
-% Define custom colors for listings
-\definecolor{codegray}{rgb}{0.5,0.5,0.5}
-\definecolor{codegreen}{rgb}{0,0.6,0}
-\definecolor{codepurple}{rgb}{0.58,0,0.82}
-\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
-
-\usepackage[margin=0.75in]{geometry}
 
 \lstdefinestyle{mystyle}{
     backgroundcolor=\color{backcolour},   
@@ -59,9 +63,6 @@
 \lstset{style=mystyle}
 
 \newcommand{\Z}{\ensuremath{\mathbb{Z}}}
-
-% template
-% expression
 \newcommand{\lete}[3]{\ensuremath{\mathsf{let}\ #1\ \mathsf{=}\ #2\ \mathsf{in}\ #3}}
 \newcommand{\lett}[4]{\ensuremath{\mathsf{let}\ #1\mathsf{:}\,#2\ \mathsf{=}\ #3\ \mathsf{in}\ #4}}
 \newcommand{\binop}[2]{\ensuremath{#1\ \mathsf{\oplus}\ #2}}
@@ -70,6 +71,12 @@
 \newcommand{\funct}[3]{\ensuremath{\lambda #1\mathsf{:}\,#2.#3}}
 \newcommand{\apply}[2]{\ensuremath{#1\ #2}}
 \newcommand{\raw}[1]{\ensuremath{#1\mathsf{.raw}}}
+\newcommand{\arrowt}[2]{\ensuremath{{#1}\rightarrow{#2}}}
+\newcommand{\checktype}[4]{\ensuremath{{check}(#1,\,#2)=(#3,\,#4)}}
+\newcommand{\requiretype}[4]{\ensuremath{{require}(#1,\,#2,\,#3)=#4}}
+\newcommand{\required}[1]{\ensuremath{#1\text{ is required}}}
+\newcommand{\nrequired}[1]{\ensuremath{#1\text{ is not required}}}
+\newcommand{\forcerequire}[2]{\ensuremath{#1\Rightarrow#2}}
 
 \begin{document}
 
@@ -83,30 +90,17 @@
 \maketitle
 
 \begin{abstract}
-% copilot instruction: Do not directly translate the text, but rather refine it to make it more suitable for a research report abstract.
+Automatic C-to-Rust translation is a promising way to improve the reliability of legacy C software. However, the existing C2Rust translator primarily performs direct syntactic conversion, which often fails to produce idiomatic Rust code and thus undermines the goal of safer, more reliable software.
 
-% translate: 자동 C-to-Rust 변환은 레거시 시스템 소프트웨어의 신뢰성을 향상시키는 유망한 방법입니다. 그러나 산업적으로 개발된 변환기인 C2Rust는 단순한 syntactic 변환으로 Rust 코드를 생성하기에 idiomatic한 Rust 코드를 작성하지 않으며, 변환의 목적을 저해합니다. (표절 수정이 필요한 부분만 textit로 표시)
+For example, in C an \texttt{enum} is effectively just an integer type and does not ensure that a variable only holds one of its defined variant values. Consequently, C2Rust translates C enums as integers in Rust, using type aliases and constants for the variants. In contrast, Rust's \texttt{enum} type enforces that only valid variant values can be assigned and supports pattern matching for variant-specific behavior. Ideally, a translation tool should convert C enums into real Rust enums to take advantage of these safety features.
 
-Automatic C-to-Rust translation is a promising way to enhance the reliability of legacy system software. However, C2Rust, an industrially developed translator, generates Rust code with
-syntactic transformations, failing to produce idiomatic Rust code and undermining the translation's objectives.
-
-% translate: 대표적인 예시로, C에서 enum은 integer type의 alias로, 지정된 variant의 값을 enforce하지 않습니다. 따라서 C2Rust 또한 integer type의 alias로 Rust 코드를 생성합니다. 그러나 Rust의 enum은 값의 안전성과 표현력을 제공하며, C의 enum을 Rust의 enum으로 변환하는 과정에서 이러한 특성을 최대한 활용할 수 있습니다.
-A representative example is that in C, enums are treated as aliases for integer types, which do not enforce the values of specified variants. Consequently, C2Rust generates Rust code with integer type aliases. However, Rust's enums provide value safety and expressiveness, and the translation process can leverage these features by converting C enums to Rust enums.
-
-% translate: 본 논문에서는 C2Rust의 enum 변환을 개선하기 위한 새로운 접근법을 제안합니다. 이 접근법은 C 코드에서 enum을 Rust의 enum으로 변환할 수 있는지 여부를 판단하고, 변환이 가능할 경우 integer type의 alias 대신에 Rust의 enum으로 대신 변환합니다. 이 접근법은 C2Rust의 enum 변환을 개선하여 Rust의 안전성과 표현력을 최대한 활용할 수 있도록 합니다.
-This report proposes a novel approach to improve C2Rust's enum translation. The approach determines whether a C enum can be translated to a Rust enum and, if feasible, replaces the integer type alias with a Rust enum. This enhancement aims to maximize Rust's safety and expressiveness in the translation process.
-
-
+In this report, we introduce a subtype inference technique to enhance C2Rust's handling of enum types. This approach analyzes the usage of an enum in the C code to determine if it can safely be represented as a Rust enum. If so, the translator replaces the integer alias with a proper Rust enum definition. This enhancement leverages Rust's safety and expressiveness, yielding translated code that is more idiomatic and type-safe.
 \end{abstract}
 
-% copilot instruction: Do not directly translate the text in the comment, but rather refine it to make it more suitable for a research report abstract, and make the latex template for the code or a grammer rule. If `code` is used, it should be in monospace font.
-
-\section{Background}
+\section{Background and Motivation}
 
 \subsection{Enumeration Types in C and Rust}
-
-% translate: C에서 enum은 정수형 타입의 별칭으로, 지정된 variant의 값을 enforce하지 않습니다. 예를 들어, C에서 enum을 정의할 때, 각 variant는 정수 값으로 매핑되며, 이 값들은 서로 다른 variant 간에 충돌할 수 있습니다. 이는 C 코드에서 enum을 사용할 때, 특정 variant가 아닌 다른 값을 할당하는 것이 가능합니다. 아래와 같은 코드 예시를 생각해볼 수 있습니다:
-In C, enums are used for storing constant integer values, but do not enforce the values of specified variants. For example, when defining an enum in C, each variant is mapped to an integer value, which can lead to collisions between different variants. This allows for the assignment of values that are not specific to any variant in C code. Consider the following code example:
+In C, an \texttt{enum} is essentially a set of named integer constants; the language does not enforce that an enum variable holds only the defined variant values. Each enumerator is assigned an integer (either explicitly or by default in sequence), and different enum types can even share the same underlying values. This means a program can assign an integer value to an enum variable even if that value doesn't correspond to any defined variant. Consider the following code example:
 
 \begin{lstlisting}[language=C]
 enum Color {
@@ -122,11 +116,9 @@ int main() {
 }
 \end{lstlisting}
 
-% translate: 위의 C 코드에서, enum Color는 세 가지 variant를 정의합니다. 그러나, r과 g는 각각 0과 1로 매핑되며, b는 3으로 매핑됩니다. main 함수에서 color 변수는 r로 초기화되지만, 이후에 4라는 값을 할당할 수 있습니다. 이는 C의 enum이 값의 안전성을 제공하지 않음을 보여줍니다.
-In the above C code, the enum Color defines three variants. However, \texttt{r} and \texttt{g} are mapped to 0 and 1, respectively, while \texttt{b} is mapped to 3. In the main function, the color variable is initialized to \texttt{r}, but can later be assigned the value 4. This demonstrates that C enums do not provide value safety.
+In this C code, the \texttt{enum Color} defines three variants, where \texttt{r} and \texttt{g} are implicitly mapped to 0 and 1, and \texttt{b} is explicitly mapped to 3. In the \texttt{main} function, the variable \texttt{color} is declared as type \texttt{Color} and initialized to \texttt{r}. However, the code then assigns \texttt{color = 4}, which is not one of the defined variants, and C allows this without any error. This illustrates that C enums do not provide value safety.
 
-% translate: 반면에, Rust의 enum은 값의 안전성과 표현력을 제공합니다. Rust에서 enum을 정의할 때, 각 variant는 고유한 값을 가지며, 이 값들은 서로 다른 variant 간에 충돌하지 않습니다. 또한, Rust의 enum은 패턴 매칭을 통해 각 variant를 쉽게 구분할 수 있습니다. 아래와 같은 코드 예시를 생각해볼 수 있습니다:
-In contrast, Rust's enums provide value safety and expressiveness. When defining an enum in Rust, each variant has a unique value that does not collide with other variants. Additionally, Rust's enums allow for easy differentiation of variants through pattern matching. Consider the following code example:
+In contrast, Rust's \texttt{enum} type ensures value safety and is more expressive. Each variant in a Rust enum is distinct and cannot be conflated with an unrelated integer value. Moreover, Rust allows pattern matching on enums, enabling clear and type-safe differentiation of variants in code. The following Rust example demonstrates these properties:
 
 \begin{lstlisting}[language=Rust]
 #[repr(C)]
@@ -143,19 +135,14 @@ fn main() {
     // color = 4 as Color; // error: can't cast integer to enum
 }
 \end{lstlisting}
-% copilot instruction: Do not directly translate the text in the comment, but rather refine it to make it more suitable for a research report abstract, and make the latex template for the code or a grammer rule. If `code` is used, it should be in monospace font.
 
-% translate and refine: Rust의 enum 타입은 Abstract Data Type으로 더 넓은 의미를 가지지만, 본 연구는 C의 enum 타입을 변환하기 위한 것이므로 C와 같은 형태의 enum만을 다룹니다. 위의 Rust 코드에서, enum 타입인 `Color`는 세 가지 variant를 정의합니다. 각 variant는 고유한 값을 가지며, R은 0으로 매핑되고, G는 1로 매핑되며, B는 3으로 매핑됩니다. `main` 함수에서 `color` 변수는 `Color::R`로 초기화되며, 이후에 4라는 값을 할당하려고 하면 컴파일 오류가 발생합니다. 이는 Rust의 enum이 값의 안전성을 제공함을 보여줍니다.
-
-In Rust, the enum type is an Abstract Data Type with a broader meaning, but this study focuses on translating C enums, so we only address enums in the form similar to C. In the above Rust code, the enum type \texttt{Color} defines three variants. Each variant has a unique value: R is mapped to 0, G to 1, and B to 3. In the \texttt{main} function, the variable \texttt{color} is initialized to \texttt{Color::R}, and attempting to assign the value 4 later results in a compile-time error. This demonstrates that Rust's enums provide value safety.
+Note that Rust enums are a form of algebraic data type and can be more expressive (for example, variants can hold associated data), but here we restrict our focus to simple C-like enums with integer values. In the Rust code above, the enum \texttt{Color} has three variants (\texttt{R}, \texttt{G}, and \texttt{B}) corresponding to 0, 1, and 3 respectively. In \texttt{main}, the variable \texttt{color} is of type \texttt{Color} and is initialized to \texttt{Color::R}. Any attempt to assign an out-of-range value (such as \texttt{4}) to \texttt{color} results in a compile-time error. This demonstrates that Rust enums guarantee an enum variable cannot hold values outside its defined variants.
 
 \subsection{C2Rust's Enum Translation}
 
-% translate: C2Rust는 C 코드를 Rust로 변환하는 도구로, C의 enum을 Rust의 enum으로 변환하는 기능을 제공합니다. 그러나, C2Rust는 enum을 integer type의 alias로 변환하며, Rust의 enum이 제공하는 값의 안전성과 표현력을 활용하지 않습니다. 이는 C2Rust가 단순한 syntactic 변환에 그치기 때문입니다.
-C2Rust is a tool that translates C code to Rust, providing functionality to convert C enums to Rust enums. However, C2Rust translates enums as integer type aliases, failing to leverage the value safety and expressiveness offered by Rust's enums. This limitation arises because C2Rust primarily performs syntactic transformations.
+C2Rust is a tool for translating C code to Rust. Although it can handle enums, in practice C2Rust translates each C enum into a Rust integer type alias (with constants for the variants) rather than using a proper Rust enum type. This means it fails to leverage Rust's value safety and expressiveness for enums. The limitation stems from C2Rust's reliance on straightforward syntactic transformations.
 
-% translate: 예를 들어, 아래와 같은 C 코드를 C2Rust로 변환한다고 생각해봅니다:
-For example, consider the following C code that we would like to translate using C2Rust:
+For example, consider the C enumeration below and how C2Rust translates it:
 
 \begin{lstlisting}[language=C]
 enum Color {
@@ -163,8 +150,7 @@ enum Color {
 };
 \end{lstlisting}
 
-% translate: C2Rust는 위의 C 코드를 아래와 같이 변환합니다:
-C2Rust translates the above C code as follows:
+C2Rust produces the following Rust code:
 
 \begin{lstlisting}[language=Rust]
 pub type Color = libc::c_uint;
@@ -173,24 +159,17 @@ pub const g: Color = 1;
 pub const r: Color = 0;
 \end{lstlisting}
 
-% translate: 위의 Rust 코드에서, C2Rust는 enum을 integer type의 alias로 변환하고, 각 variant를 상수로 정의합니다. 그러나, 이는 Rust의 enum이 제공하는 값의 안전성과 표현력을 활용하지 못합니다.
+In this output, the enum is essentially lost: \texttt{Color} is defined as an alias for \texttt{libc::c\_uint}, and each variant is a constant of that type. The translated code behaves like an untyped integer, not leveraging Rust's enum features or value checking.
 
-In the above Rust code, C2Rust translates the enum as an integer type alias and defines each variant as a constant. However, this does not utilize the value safety and expressiveness provided by Rust's enums.
+In C, an enum type is effectively interchangeable with an integer type (it is just a labeled alias), so C2Rust's current translation is technically faithful as a direct transformation. However, if a developer explicitly uses an enum type name in a variable or function declaration, it implies an intention that the variable should only take on values from that enum's set of variants. If we can verify from the code that this intention is respected (i.e., only valid variant values are ever assigned to that variable), then it would be more appropriate for the translated Rust code to use a real enum type instead of a plain integer.
 
-% translate: C에서 enumeration type과 int 타입 간의 관계는 단순히 type aliasing에 불과합니다. 그러므로 C2Rust에서 C의 enumeration type을 Rust의 constant integer value로 옮기는 방식은 syntactic한 변환을 수행한다는 관점에서 적절합니다. 다만, enumeration type의 이름으로 변수나 함수의 타입을 지정할 수 있기에, 개발자가 다른 변수의 선언부에서 해당 이름을 사용하여 타입을 지정했다면 enum variants 중에 값이 존재함을 의도했다고 추정할 수 있습니다. 만약 코드에서 이 사실을 증명할 수 있다면, 변환된 idiomatic한 Rust코드에서는 enum 타입을 사용해야 적절합니다. 
-
-In C, the relationship between enumeration types and integer types is merely type aliasing. Therefore, C2Rust's approach of translating C's enumeration types to Rust's constant integer values is appropriate from the perspective of performing syntactic transformations. However, since enumeration types can be used to specify variable or function types, if a developer has used the enumeration name in another variable declaration, it can be inferred that they intended for the value to exist among the enum variants. If this fact can be proven in the code, then using an enum type in the translated idiomatic Rust code would be appropriate.
-
-% translate: 본 논문에서는 C2Rust의 enum 변환을 개선하기 위한 새로운 접근법을 제안합니다. 이 접근법은 C 코드에서 enum을 Rust의 enum으로 변환할 수 있는지 여부를 판단하고, 변환이 가능할 경우 integer type의 alias 대신에 Rust의 enum으로 대신 변환합니다. 이 접근법은 C2Rust의 enum 변환을 개선하여 Rust의 안전성과 표현력을 최대한 활용할 수 있도록 합니다.
-
-This report proposes a novel approach to improve C2Rust's enum translation. The approach determines whether a C enum can be translated to a Rust enum and, if feasible, replaces the integer type alias with a Rust enum. This enhancement aims to maximize Rust's safety and expressiveness in the translation process.
+For these reasons, we propose to augment C2Rust with a subtype inference mechanism for enums. This mechanism determines if a given C enum's usage is consistent with a Rust enum's constraints, and if so, translates it into an actual Rust enum (replacing the integer alias). The goal is to produce translated code that fully benefits from Rust's safety features and clarity.
 
 \section{Approach}
+
 \subsection{Na\"ive Translation}
 
-% 가장 쉬운 방법은 C에서 정의된 어떤 enumeration type에 대해 Rust의 enum 타입으로 변환한 후 safe and well-typed expression일 때만 채택하는 것입니다. 예를 들어, 아래와 같이 C 코드와 C2Rust를 통해 변환된 Rust 코드가 있다고 가정합니다: 
-
-The simplest approach is to translate any enumeration type defined in C to a Rust enum type, but only adopt it when the expression is safe and well-typed. For example, consider the following C code and its translation via C2Rust:
+A straightforward idea would be to always translate a C enum into a Rust enum in the output, as long as doing so does not break the code's correctness. For example, consider the following C code and how C2Rust currently translates it:
 
 \begin{lstlisting}[language=C]
 enum Color {
@@ -227,9 +206,7 @@ unsafe fn ctoi(color: Color) -> libc::c_int {
 }
 \end{lstlisting}
 
-% C2Rust에서는 enum 타입을 integer type의 alias로 변환하는데, 이를 강제로 enum type으로 변환해본다고 해봅시다:
-
-C2Rust translates the enum type as an integer type alias, but let's assume we force it to be an enum type:
+C2Rust's translation above leaves \texttt{Color} as an alias for \texttt{c\_uint}. Suppose instead we manually alter the translation to use a Rust enum for \texttt{Color}:
 
 \begin{lstlisting}[language=Rust]
 #[repr(C)]
@@ -241,15 +218,13 @@ unsafe fn ctoi(color: Color) -> libc::c_int {
     match color {
         Color::R => return 0xff as libc::c_int,
         Color::G => return 0xff00 as libc::c_int,
-        Color::B => return 0xff00000 as libc::c_int
+        Color::B => return 0xff0000 as libc::c_int,
     }
     return -(1 as libc::c_int);
 }
 \end{lstlisting}
 
-% 이 특정한 케이스에서는 C2Rust가 enum을 Rust의 enum으로 변환하는 것이 잘 작동합니다. C 개발자가 enumeration type에 잘못된 값이 들어가지 않도록 이상적으로 코드를 작성했다면 이 방식이 항상 작동할 것입니다. 하지만 아래와 같은 코드가 추가되었다고 생각해볼 수 있습니다.
-
-In this specific case, C2Rust's translation of the enum to a Rust enum works well. If the C developer has ideally written the code to prevent incorrect values from entering the enumeration type, this approach will work consistently. However, consider the following additional code:
+In this instance, replacing the alias with a real Rust enum works correctly. As long as the C code never introduces invalid values for \texttt{Color}, translating it directly to a Rust enum is sound. However, now consider an additional piece of code added to this program:
 
 \begin{lstlisting}[language=C, label=lst:example]
 // ...
@@ -260,324 +235,279 @@ int foo() {
 }
 \end{lstlisting}
 
-% 이 경우 C에서는 green을 Color 타입으로 변환하는 implicit conversion이 발생합니다. Rust의 enum은 이와 같은 변환을 허용하지 않기 때문에, Rust 코드에서 ctoi(green) 호출은(심지어 ctoi(green as Color) 와 같은 casting 구문을 넣더라도) 컴파일 오류를 발생시킵니다. 이는 C2Rust가 enum을 integer type의 alias로 변환하는 이유 중 하나입니다. 이러한 경우도 포함하여 올바르게 변환하기 위해서 새로운 접근법이 필요합니다. 다음 section에서는 이러한 문제를 해결하기 위한 subtype 추정이라는 새로운 접근법을 제안합니다.
-
-In this case, an implicit conversion occurs in C, converting \texttt{green} to the \texttt{Color} type. Rust's enums do not allow such conversions, so calling \texttt{ctoi(green)} (even with a casting syntax like \texttt{ctoi(green as Color)}) results in a compile-time error. This is one of the reasons why C2Rust translates enums as integer type aliases. To correctly translate such cases, a new approach is needed. The next section proposes a novel approach called subtype inference to address these issues.
+In the \texttt{foo} function above, C allows an implicit conversion: the constant integer \texttt{green} (value 1) is passed to \texttt{ctoi}, which expects an enum \texttt{Color}. Rust, however, does not permit implicitly or explicitly casting an integer to an enum type. As a result, calling \texttt{ctoi(green)} would not compile in Rust (even an attempt like \texttt{ctoi(green as Color)} is disallowed). This scenario highlights why C2Rust sticks to integer types for enums; a na\"ive direct conversion would break here. We need a more nuanced approach to handle such cases. To address this, we propose a technique called \emph{subtype inference}.
 
 \subsection{Subtype Inference}
 
-% 해당 접근법의 핵심 아이디어는, enum 타입을 정수 타입의 subtype으로 보는 것입니다. 이는 enum 타입으로 선언된 변수에 대해, 해당 enum 타입의 variant 중 하나로만 값을 할당할 수 있도록 보장합니다. 이 관점에서, C는 enum 타입의 변수에 아무 정수 값이나 할당할 수 있으므로 안전성을 보장하지 않고, Rust는 enum 타입의 변수에 해당 enum 타입의 variant 중 하나로만 값을 할당할 수 있도록 보장하므로 안전하다고 볼 수 있습니다.
+Our approach introduces the concept of treating the C enum type as a subtype of a general integer type. In other words, we assume a C enum $\epsilon$ should allow only the values defined by its variants (making it, conceptually, a subset of $\mathbb{Z}$). Under this interpretation, we enforce that any variable declared with type $\epsilon$ can only be assigned one of the enum's variant values. In C, this property is not enforced by the compiler (any integer can be assigned), whereas in Rust the compiler does enforce it (an enum variable can only be one of its variants).
 
-The core idea of this approach is to view enum types as subtypes of integer types. This ensures that variables declared with an enum type can only be assigned values that are one of the variants of that enum type. From this perspective, C does not guarantee safety because it allows any integer value to be assigned to a variable of an enum type, while Rust guarantees safety by allowing only values that are one of the variants of the enum type.
+With subtype inference, we analyze the program to infer whether an enum type is consistently used in a restricted way (only holding its variant values). If so, we consider that enum to be a subtype of the integer type, meaning it effectively behaves like an integer with a limited range. We then translate it as a Rust enum. This analysis requires examining every usage of the enum in the C code and checking that any value assigned to a variable of that type is indeed one of the defined variant values.
 
-% subtype 추정은 C 코드를 작성한 개발자가 enum 타입을 선언할 때, 이를 정말 정수 타입의 subtype으로 의도했는지 여부를 추정하는 것입니다. 만약 개발자가 enum 타입을 정수 타입의 subtype으로 의도했다면, Rust의 enum 타입으로 변환할 수 있습니다. 이를 위해서는 C 코드에서 enum 타입이 사용되는 모든 위치를 분석해야 합니다. 이 분석을 통해 enum 타입이 사용되는 위치에서 해당 enum 타입의 variant 중 하나로만 값을 할당하는지 확인할 수 있습니다.
-
-Subtype inference involves deducing whether the developer intended to declare an enum type as a subtype of an integer type. If the developer did intend for the enum type to be a subtype of an integer type, it can be translated to a Rust enum type. To achieve this, all occurrences of the enum type in the C code must be analyzed. This analysis checks whether values assigned at these occurrences are one of the variants of the enum type.
-
-% 아래와 같은 생각 정리를 논문에 잘 녹여내도록 적어야 함:
-% - 예를 들어, 위에서 언급한 `foo` 함수를 다시 생각해보자. 개발자가 변수/파라미터 선언부의 타입에 “Color”라고 명시했을 때만 `Color` 타입임을 의도했다고 간주합니다. 그와 **연관된 변수**들만 검사하여 enum type으로 바꿀 수 있는지 검사합니다. 예시 코드의 경우,
-    % - `ctoi`의 파라미터 타입이 “Color”로 명시되어 있습니다. 따라서 파라미터는 `Color` 타입임을 의도했다고 간주합니다.
-    % - `foo` 함수의 body에서 `green`이 `ctoi`의 파라미터로 적용되었으므로 `green`의 타입은 `Color`와 연관됩니다.
-    % - 연관된 변수의 선언부 `int`에서 `Color`로 수정합니다. `const Color green = 1;`로 수정됩니다.
-    % - 변경된 타입이 타입 에러를 일으키지 않는지 확인합니다. 정의 구문에서 대입 연산자 오른쪽의 expression은 오로지 1이므로 바로 검증할 수 있습니다. 1은 `Color`의 variant 중 하나이므로 OK입니다.
-
-For example, let's reconsider the \texttt{foo} function mentioned earlier. We assume that the developer intended to declare the type as ``Color" only when explicitly specified in the variable or parameter declaration. We then check only the variables associated with that declaration to see if they can be translated to an enum type. In the example code:
+For a concrete illustration, revisit the earlier \texttt{foo} example. We assume that whenever the code explicitly uses the enum's name in a type annotation, it is intended to truly be of that enum type. Under this assumption:
 \begin{itemize}
-    \item The parameter type of \texttt{ctoi} is explicitly declared as ``Color". Therefore, we assume that the parameter is intended to be of type \texttt{Color}.
-    \item In the body of the \texttt{foo} function, \texttt{green} is applied as a parameter to \texttt{ctoi}, so we associate the type of \texttt{green} with \texttt{Color}.
-    \item We modify the declaration of the associated variable from \texttt{int} to \texttt{Color}. It becomes \texttt{const Color green = 1;}.
-    \item We check if the modified type does not cause a type error. In the definition statement, the right-hand side of the assignment operator is an expression that evaluates to 1, which can be immediately verified. Since 1 is one of the variants of \texttt{Color}, this is valid.
+    \item The parameter \texttt{c} of function \texttt{ctoi} is declared as type \texttt{Color}, so we treat it as genuinely meant to be a \texttt{Color}.
+    \item In the body of \texttt{foo}, the variable \texttt{green} is passed to \texttt{ctoi}. This usage suggests that \texttt{green} should be considered a \texttt{Color} as well (since it is being used where a \texttt{Color} is expected).
+    \item We accordingly change \texttt{green}'s declaration from \texttt{const int green = 1;} to \texttt{const Color green = 1;}.
+    \item We then verify that this change does not introduce any type errors. In this case, the initializer value \texttt{1} is indeed one of the defined \texttt{Color} variants (assuming \texttt{r=0}, \texttt{g=1}, \texttt{b=3} as earlier), so the assignment is valid under the new type.
 \end{itemize}
 
-% 이와 같은 변환 방식을 연관된 모든 변수에 적용하여도 문제없음이 검증되었을 때만 해당 enumeration type을 Rust의 enum type으로 변환합니다.
+If we can apply such transformations for all instances where the enum is used (and none of them produce a type error), then the C enum in question can safely be translated into a Rust enum. In the next section, we formalize this approach with a formal grammar and inference rules.
 
-If this transformation can be applied to all associated variables without issues, we can safely translate the enumeration type to a Rust enum type.
-
-% 다음 section에서는 이 접근법을 정의하기 위한 formal한 문법을 제시합니다.
-The next section presents a formal grammar to define this approach.
-
-% 아래 섹션에 가장 어울리는 제목으로 제시
-\section{Definitions}
+\section{Formal Definitions and Assumptions}
 
 \subsection{Notation}
-% notation 들을 정의하는 섹션입니다.
-We define the following notations to formalize our approach:
 
+We introduce the following notation for our formalization:
 \begin{enumerate}
-    % 변환이 가능한지 검증하고자 하는 목표 enum type을 $\epsilon$으로 정의합니다.
-    \item We define the target enum type that we want to verify for translation as $\epsilon$.
-    \item We denote the set of all values associated with the target enum type $\epsilon$ as $V_\epsilon$.
+    \item Let $\epsilon$ denote the particular enum type under consideration for translation.
+    \item Let $V_\epsilon$ be the set of all integer values corresponding to the variants of $\epsilon$ (i.e., the values that $\epsilon$ can take).
 \end{enumerate}
 
 \subsection{Assumptions}
-% 이 접근법을 적용하기 위한 가정들을 정의합니다.
-We make the following assumptions for applying this approach:
-
+Our approach relies on several assumptions:
 \begin{enumerate}
-    % C 코드는 항상 well-typed이며, 모든 변수 선언부의 type은 inference되었다.
-    \item The C code is always well-typed, and the type of every variable declaration has been inferred.
-    % C 코드에서 변수의 선언부의 타입 지정에 명시적으로 enum 타입의 이름이 사용되었다면, 해당 변수의 타입은 epsilon으로 의도했다고 간주한다.
-    \item If the name of the enum type is explicitly used in the variable declaration in the C code, we assume that the type of that variable is intended to be $\epsilon$.
-    % 편의 상 파라미터 지정 혹은 변수 선언 시 사용된 identifier name은 모두 다르다고 가정합니다.
-    \item For convenience, we assume that all identifier names used in parameter specifications or variable declarations are distinct.
-    % "연관 타입 환경변수"는 TEnv의 원소로 연관된 변수와 요구하는 타입의 쌍을 모두 저장합니다.
-    \item The "associated type environment variable" stores all pairs of associated variables and their required types as elements of $TEnv$.
+    \item The C code is well-typed (we assume no type errors in the input program), and the type of every variable can be determined.
+    \item If the enum type's name $\epsilon$ is explicitly used in a variable or parameter declaration in the C code, we assume the type of that variable is intended to be $\epsilon$.
+    \item For simplicity, assume that all parameter and variable identifier names are distinct (no naming collisions).
+    \item We maintain an associated type environment $\Gamma$ (with elements stored in a set $TEnv$) that records variables and their associated required types.
 \end{enumerate}
 
-\subsection{Define Functions}
-% 이 접근법을 정의하기 위한 함수들을 정의합니다.
-We define the following functions to formalize our approach:
-
-\newcommand{\checktype}[4]{\ensuremath{{check}(#1,\,#2)=(#3,\,#4)}}
-\newcommand{\requiretype}[4]{\ensuremath{{require}(#1,\,#2,\,#3)=#4}}
-
+\subsection{Type Checking and Requirement Functions}
+We define two functions to formalize the checking of expressions and enforcement of required types:
 \begin{itemize}
-    % $check(\Gamma,e)$: 타입 체크를 통해 얻은 타입 $\tau$와 연관 타입 환경변수 $\Gamma$를 반환합니다. 개발자의 요구가 없는 일반적인 경우에 실행됩니다.
-    \item $check(\Gamma,e)$: Returns the type $\tau$ obtained through type checking and the associated type environment variable $\Gamma$. This is executed in the general case where there are no specific developer requirements.
-    % $require(\Gamma,e,\tau)$: 현재 expression이 정확히 타입 $\tau$를 가질 것을 요구하며, 이 때의 연관 타입 환경변수 $\Gamma$를 반환합니다. 개발자가 특정 타입을 요구하였을 경우에 호출됩니다.
-    \item $require(\Gamma,e,\tau)$: Requires the current expression to have the exact type $\tau$, and returns the associated type environment variable $\Gamma$ at that time. This is called when the developer has specific type requirements.
+    \item $check(\Gamma, e)$: Performs standard type checking on expression $e$ under environment $\Gamma$. It returns the inferred type $\tau$ of $e$ and an updated associated type environment $\Gamma$. This function is used in the general case where there are no special developer requirements on types.
+    \item $require(\Gamma, e, \tau)$: Checks expression $e$ under environment $\Gamma$ with the requirement that $e$'s type must be exactly $\tau$. It returns the associated type environment $\Gamma$ after enforcing this requirement. This function is used when a specific type is expected for an expression (for example, due to an explicit annotation or context).
 \end{itemize}
 
-\section{Formal Rule of Subtype Inference}
+\section{Formal Rules for Subtype Inference}
 
-\subsection{No Functions, Single Expression}
+\subsection{Basic Expression Language (No Functions)}
 \subsubsection{Abstract Syntax}
-% 이 접근법을 formal하게 정의하기 위한 type과 expression의 abstract syntax를 정의합니다.
-We define the abstract syntax for types and expressions to formalize this approach:
+We first define an abstract syntax for a simple language of expressions (without functions) to model our approach:
 
-\vspace{1em}
-
+\vspace{0.5em}
 \begin{bnf}
-    $\tau$ ::= $\epsilon$ | $\Z$
+    $\tau$ ::= $\epsilon$ \;|\; $\Z$
 \end{bnf}
 
 \begin{bnf}
-    $e$ ::= \lett{x}{\tau}{e}{e}
-    | $x$
-    | $n$
-    | \binop{e}{e}
-    | \ternary{e}{e}{e}
+    $e$ ::= \lett{x}{\tau}{e}{e} 
+    \;|\; $x$ 
+    \;|\; $n$ 
+    \;|\; \binop{e}{e} 
+    \;|\; \ternary{e}{e}{e}
 \end{bnf}
-
-\vspace{1em}
+\vspace{0.5em}
 
 \subsubsection{Subtype and Required Type}
+We treat the enum type $\epsilon$ as a subtype of the integer type $\Z$. We also introduce a notion of a "required" type for enforcing enum types in certain contexts. The formal rules for subtyping and required types are given in Figure~\ref{fig:subtype-required-rules}.
 
-\newcommand{\required}[1]{\ensuremath{#1\text{ is required}}}
-\newcommand{\nrequired}[1]{\ensuremath{#1\text{ is not required}}}
-\newcommand{\forcerequire}[2]{\ensuremath{#1\Rightarrow#2}}
-
-\[
-    \epsilon <: \Z \quad \tau <: \tau
-\]
-
-\[
-    \infer{
-        \required{\tau}
-    }{\tau=\epsilon}
-\]
-
-\[
-    \infer{
-        \forcerequire{\tau_1}{\tau_2}
-    }{\required{\tau_2} \quad \tau_2 <: \tau_1}
-\]
+\begin{figure}[ht]
+\centering
+\begin{framed}
+\begin{align*}
+\text{\textsc{Sub-Epsilon:}} &\quad \epsilon <: \Z \\
+\text{\textsc{Sub-Refl:}} &\quad \tau <: \tau \\
+\text{\textsc{Req-Enum:}} &\quad \infer{\required{\tau}}{\tau = \epsilon} \\
+\text{\textsc{Force-Req:}} &\quad \infer{\forcerequire{\tau_1}{\tau_2}}{\required{\tau_2} \quad \tau_2 <: \tau_1}
+\end{align*}
+\end{framed}
+\caption{Subtype relation and required-type rules (for the base language). Rule \textsc{Sub-Epsilon} declares the enum type $\epsilon$ to be a subtype of the integer type $\Z$, and \textsc{Sub-Refl} allows any type to be a subtype of itself. Rule \textsc{Req-Enum} tags $\epsilon$ as a required type (indicating that contexts expecting this type must enforce it), and \textsc{Force-Req} states that if $\tau_2$ is required and $\tau_2 <: \tau_1$, then $\tau_1$ is forced to require $\tau_2$.}
+\label{fig:subtype-required-rules}
+\end{figure}
 
 \subsubsection{Type Checking}
-\newcommand{\checkrule}[4]{\[\infer{\checktype{\Gamma}{#1}{#2}{#3}}{
-    \begin{array}{c}
-        #4
-    \end{array}
-}\]}
+The type checking rules for expressions (without functions) are given in Figure~\ref{fig:type-checking-rules}.
 
-\[\checktype{\Gamma}{x}{\Gamma(x)}{\emptyset}\]
-
-\checkrule{n}{\Z}{\emptyset}{
-    n\notin V_\epsilon
+\begin{figure*}[ht]
+\normalsize
+\centering
+\begin{framed}
+\begin{align*}
+\text{\textsc{Check-Var:}} &\quad \checktype{\Gamma}{x}{\Gamma(x)}{\emptyset} \\
+\text{\textsc{Check-ConstNonEnum:}} &\quad \infer{\checktype{\Gamma}{n}{\Z}{\emptyset}}{n \notin V_\epsilon} \\
+\text{\textsc{Check-ConstEnum:}} &\quad \infer{\checktype{\Gamma}{n}{\epsilon}{\emptyset}}{n \in V_\epsilon} \\
+\text{\textsc{Check-Subsumption:}} &\quad \infer{\checktype{\Gamma}{e}{\tau}{\Gamma_1}}{\checktype{\Gamma}{e}{\tau'}{\Gamma_1} \quad \tau' <: \tau} \\
+\text{\textsc{Check-BinOp:}} &\quad \infer{\checktype{\Gamma}{\binop{e_1}{e_2}}{\Z}{\Gamma_1 \cup \Gamma_2}}{\checktype{\Gamma}{e_1}{\Z}{\Gamma_1} \quad \checktype{\Gamma}{e_2}{\Z}{\Gamma_2}} \\
+\text{\textsc{Check-Ternary:}} &\quad \infer{\checktype{\Gamma}{\ternary{e_1}{e_2}{e_3}}{\tau}{\Gamma_1 \cup \Gamma_2 \cup \Gamma 3}}{
+\begin{array}{c}
+\checktype{\Gamma}{e_1}{\Z}{\Gamma_1} \\
+\checktype{\Gamma}{e_2}{\tau}{\Gamma_2} \quad \checktype{\Gamma}{e_3}{\tau}{\Gamma_3}
+\end{array}
+} \\
+\text{\textsc{Check-Let-Req:}} &\quad \infer{\checktype{\Gamma}{\lett{x}{\tau_1}{e_1}{e_2}}{\tau_2}{\Gamma_1 \cup \Gamma_2}}{
+\begin{array}{c}
+\required{\tau_1} \quad \requiretype{\Gamma}{e_1}{\tau_1}{\Gamma_1} \\
+\checktype{\Gamma[x:\tau_1]}{e_2}{\tau_2}{\Gamma_2}
+\end{array}
+} \\
+\text{\textsc{Check-Let-NoReq:}} &\quad \infer{\checktype{\Gamma}{\lett{x}{\tau_1}{e_1}{e_2}}{\tau_2}{\Gamma_1 \cup \Gamma_2}}{
+\begin{array}{c}
+\nrequired{\tau_1} \quad \checktype{\Gamma}{e_1}{\tau_1}{\Gamma_1} \\
+\checktype{\Gamma[x:\tau_1]}{e_2}{\tau_2}{\Gamma_2} \quad x \notin \text{Domain}(\Gamma_2)
+\end{array}
+} \\
+\text{\textsc{Check-Let-Force:}} &\quad \infer{\checktype{\Gamma}{\lett{x}{\tau_1}{e_1}{e_2}}{\tau_2}{\Gamma_1 \cup \Gamma_2}}{
+\begin{array}{c}
+\forcerequire{\tau_1}{\tau} \quad \requiretype{\Gamma}{e_1}{\tau}{\Gamma_1} \\
+\checktype{\Gamma[x:\tau]}{e_2}{\tau_2}{\Gamma_2} \quad \Gamma_2(x) = \tau
+\end{array}
 }
-
-\checkrule{n}{\epsilon}{\emptyset}{
-    n\in V_\epsilon
-}
-
-\checkrule{e}{\tau}{\Gamma_1}{
-    \checktype{\Gamma}{e}{\tau'}{\Gamma_1} \quad
-    \tau' <: \tau
-}
-
-\checkrule{\binop{e_1}{e_2}}{\Z}{\Gamma_1\cup\Gamma_2}{
-    \checktype{\Gamma}{e_1}{\Z}{\Gamma_1} \quad
-    \checktype{\Gamma}{e_2}{\Z}{\Gamma_2}
-}
-
-\checkrule{\ternary{e_1}{e_2}{e_3}}{\tau}{\Gamma_1\cup\Gamma_2\cup\Gamma_3}{
-    \checktype{\Gamma}{e_1}{\Z}{\Gamma_1} \\
-    \checktype{\Gamma}{e_2}{\tau}{\Gamma_2} \quad
-    \checktype{\Gamma}{e_3}{\tau}{\Gamma_3}
-}
-
-\checkrule{\lett{x}{\tau_1}{e_1}{e_2}}{\tau_2}{\Gamma_1\cup\Gamma_2}{
-    \required{\tau_1} \quad \requiretype{\Gamma}{e_1}{\tau_1}{\Gamma_1} \\
-    \checktype{\Gamma[x:\tau_1]}{e_2}{\tau_2}{\Gamma_2}
-}
-
-\checkrule{\lett{x}{\tau_1}{e_1}{e_2}}{\tau_2}{\Gamma_1\cup\Gamma_2}{
-    \nrequired{\tau_1} \quad \checktype{\Gamma}{e_1}{\tau_1}{\Gamma_1} \\
-    \checktype{\Gamma[x:\tau_1]}{e_2}{\tau_2}{\Gamma_2} \quad x\notin Domain(\Gamma_2)
-}
-
-\checkrule{\lett{x}{\tau_1}{e_1}{e_2}}{\tau_2}{\Gamma_1\cup\Gamma_2}{
-    \forcerequire{\tau_1}{\tau} \quad \requiretype{\Gamma}{e_1}{\tau}{\Gamma_1} \\
-    \checktype{\Gamma[x:\tau]}{e_2}{\tau_2}{\Gamma_2} \quad \Gamma_2(x)=\tau
-}
+\end{align*}
+\end{framed}
+\caption{Type checking rules for the base language (no functions). \textsc{Check-Var} retrieves a variable's type from the environment. \textsc{Check-ConstNonEnum} and \textsc{Check-ConstEnum} classify a numeric literal as type $\Z$ or $\epsilon$ depending on whether its value belongs to $V_\epsilon$. \textsc{Check-Subsumption} allows an expression of a subtype to be used as a supertype. \textsc{Check-BinOp} and \textsc{Check-Ternary} ensure that binary operations use integer operands and that a ternary conditional has an integer condition and consistent branch result types. Finally, \textsc{Check-Let-Req}, \textsc{Check-Let-NoReq}, and \textsc{Check-Let-Force} handle let-bindings: enforcing required types, handling the absence of a requirement, and forcing a required subtype, respectively.}
+\label{fig:type-checking-rules}
+\end{figure*}
 
 \subsubsection{Type Requiring}
-\newcommand{\requirerule}[4]{\[\infer{\requiretype{\Gamma}{#1}{#2}{#3}}{
-    \begin{array}{c}
-        #4
-    \end{array}}\]}
+The rules for requiring (asserting) specific types are given in Figure~\ref{fig:type-requiring-rules}.
 
-\requirerule{x}{\tau}{[x:\tau]}{
-    \Gamma(x)=\tau' \quad \tau <: \tau'
+\begin{figure*}[ht]
+\centering
+\begin{framed}
+\begin{align*}
+\text{\textsc{Require-Var-Env:}} &\quad \infer{\requiretype{\Gamma}{x}{\tau}{[x:\tau]}}{\Gamma(x) = \tau' \quad \tau <: \tau'} \\
+\text{\textsc{Require-ConstEnum:}} &\quad \infer{\requiretype{\Gamma}{n}{\epsilon}{\emptyset}}{n \in V_\epsilon} \\
+\text{\textsc{Require-Expr-NoReq:}} &\quad \infer{\requiretype{\Gamma}{e}{\tau}{\Gamma_1}}{\nrequired{\tau} \quad \checktype{\Gamma}{e}{\tau}{\Gamma_1}} \\
+\text{\textsc{Require-Var-Expr:}} &\quad \infer{\requiretype{\Gamma}{x}{\tau}{\Gamma_1}}{\checktype{\Gamma}{x}{\tau'}{\Gamma_1} \quad \tau' <: \tau} \\
+\text{\textsc{Require-Ternary:}} &\quad \infer{\requiretype{\Gamma}{\ternary{e_1}{e_2}{e_3}}{\tau}{\Gamma_1}}{
+\begin{array}{c}
+\checktype{\Gamma}{e_1}{\Z}{\Gamma_1} \\
+\requiretype{\Gamma}{e_2}{\tau}{\Gamma_2} \quad \requiretype{\Gamma}{e_3}{\tau}{\Gamma_3}
+\end{array}
+} \\
+\text{\textsc{Require-Let-Req:}} &\quad \infer{\requiretype{\Gamma}{\lett{x}{\tau_1}{e_1}{e_2}}{\tau_2}{\Gamma_1 \cup \Gamma_2}}{
+\begin{array}{c}
+\required{\tau_1} \quad \requiretype{\Gamma}{e_1}{\tau_1}{\Gamma_1} \\
+\requiretype{\Gamma[x:\tau_1]}{e_2}{\tau_2}{\Gamma_2}
+\end{array}
+} \\
+\text{\textsc{Require-Let-NoReq:}} &\quad \infer{\requiretype{\Gamma}{\lett{x}{\tau_1}{e_1}{e_2}}{\tau_2}{\Gamma_1 \cup \Gamma_2}}{
+\begin{array}{c}
+\nrequired{\tau_1} \quad \checktype{\Gamma}{e_1}{\tau_1}{\Gamma_1} \\
+\requiretype{\Gamma[x:\tau_1]}{e_2}{\tau_2}{\Gamma_2} \quad x \notin \text{Domain}(\Gamma_2)
+\end{array}
+} \\
+\text{\textsc{Require-Let-Force:}} &\quad \infer{\requiretype{\Gamma}{\lett{x}{\tau_1}{e_1}{e_2}}{\tau_2}{\Gamma_1 \cup \Gamma_2}}{
+\begin{array}{c}
+\forcerequire{\tau_1}{\tau} \quad \requiretype{\Gamma}{e_1}{\tau}{\Gamma_1} \\
+\requiretype{\Gamma[x:\tau]}{e_2}{\tau_2}{\Gamma_2} \quad \Gamma_2(x) = \tau
+\end{array}
 }
+\end{align*}
+\end{framed}
+\caption{Type requirement (``require'') rules for the base language. \textsc{Require-Var-Env} adds a variable to the environment with a required type (if that required type $\tau$ is a subtype of the variable's original type $\tau'$). \textsc{Require-ConstEnum} asserts that a numeric literal has type $\epsilon$ if its value is in $V_\epsilon$. \textsc{Require-Expr-NoReq} processes an expression normally when no special requirement applies. \textsc{Require-Var-Expr} handles requiring a variable expression to have a certain type by checking it and ensuring the actual type is a subtype of the required type. \textsc{Require-Ternary} enforces that both branches of a conditional expression meet the required type. Finally, \textsc{Require-Let-Req}, \textsc{Require-Let-NoReq}, and \textsc{Require-Let-Force} impose type requirements in let-binding contexts analogously to the type checking rules.}
+\label{fig:type-requiring-rules}
+\end{figure*}
 
-\requirerule{n}{\epsilon}{\emptyset}{
-    n\in V_\epsilon
-}
-
-\requirerule{e}{\tau}{\Gamma_1}{
-    \nrequired{\tau} \quad \checktype{\Gamma}{e}{\tau}{\Gamma_1}
-}
-
-\requirerule{x}{\tau}{\Gamma_1}{
-    \checktype{\Gamma}{x}{\tau'}{\Gamma_1} \quad \tau' <: \tau
-}
-
-\requirerule{\ternary{e_1}{e_2}{e_3}}{\tau}{\Gamma_1}{
-    \checktype{\Gamma}{e_1}{\Z}{\Gamma_1} \\
-    \requiretype{\Gamma}{e_2}{\tau}{\Gamma_2} \quad
-    \requiretype{\Gamma}{e_3}{\tau}{\Gamma_3}
-}
-
-\requirerule{\lett{x}{\tau_1}{e_1}{e_2}}{\tau_2}{\Gamma_1\cup\Gamma_2}{
-    \required{\tau_1} \quad \requiretype{\Gamma}{e_1}{\tau_1}{\Gamma_1} \\
-    \requiretype{\Gamma[x:\tau_1]}{e_2}{\tau_2}{\Gamma_2}
-}
-
-\requirerule{\lett{x}{\tau_1}{e_1}{e_2}}{\tau_2}{\Gamma_1\cup\Gamma_2}{
-    \nrequired{\tau_1} \quad \checktype{\Gamma}{e_1}{\tau_1}{\Gamma_1} \\
-    \requiretype{\Gamma[x:\tau_1]}{e_2}{\tau_2}{\Gamma_2} \quad x\notin Domain(\Gamma_2)
-}
-
-\requirerule{\lett{x}{\tau_1}{e_1}{e_2}}{\tau_2}{\Gamma_1\cup\Gamma_2}{
-    \forcerequire{\tau_1}{\tau} \quad \requiretype{\Gamma}{e_1}{\tau}{\Gamma_1} \\
-    \requiretype{\Gamma[x:\tau]}{e_2}{\tau_2}{\Gamma_2} \quad \Gamma_2(x)=\tau
-}
-
-\subsection{With First-Class Functions}
-% 함수가 있는 경우에 대한 추가로 문법을 정의합니다.
-
-\newcommand{\arrowt}[2]{\ensuremath{{#1}\rightarrow{#2}}}
-
+\subsection{Extension: First-Class Functions}
 \subsubsection{Abstract Syntax}
-We extend the abstract syntax to include functions:
+We now extend the language syntax to include first-class functions:
 
-\vspace{1em}
-
+\vspace{0.5em}
 \begin{bnf}
-    $\tau$ ::= $\cdots$ | \arrowt{\tau}{\tau}
+    $\tau$ ::= $\cdots$ \;|\; \arrowt{\tau}{\tau}
 \end{bnf}
 
 \begin{bnf}
-    $e$ ::= $\cdots$
-    | \funct{x}{\tau}{e}
-    | \apply{e}{e}
+    $e$ ::= $\cdots$ 
+    \;|\; \funct{x}{\tau}{e} 
+    \;|\; \apply{e}{e}
 \end{bnf}
+\vspace{0.5em}
 
-\vspace{1em}
+This extension adds function types ($\tau_1 \to \tau_2$), lambda abstractions (anonymous functions), and function application to our language.
 
 \subsubsection{Subtype and Required Type}
+The additional rules for subtyping and required types with function types are shown in Figure~\ref{fig:function-subtype-rules}.
 
-\[\infer{
-    \required{\arrowt{\tau_1}{\tau_2}}
-}{\required{\tau_2}}\]
-
-\[\infer{
-    \arrowt{\tau_1}{\tau_2} <: \arrowt{\tau_3}{\tau_4}
-}{
-    \tau_3 <: \tau_1 \quad \tau_2 <: \tau_4
-}\]
+\begin{figure}[ht]
+\centering
+\begin{framed}
+\begin{align*}
+\text{\textsc{Req-Arrow:}} &\quad \infer{\required{\arrowt{\tau_1}{\tau_2}}}{\required{\tau_2}} \\
+\text{\textsc{Sub-Arrow:}} &\quad \infer{\arrowt{\tau_1}{\tau_2} <: \arrowt{\tau_3}{\tau_4}}{\tau_3 <: \tau_1 \quad \tau_2 <: \tau_4}
+\end{align*}
+\end{framed}
+\caption{Additional subtyping and requirement rules for function types. \textsc{Req-Arrow} marks a function type as required if its return type is required (i.e., if $\tau_2$ must be $\epsilon$, then the function type $\tau_1 \to \tau_2$ is considered required). \textsc{Sub-Arrow} is the subtyping rule for function types: $\tau_1 \to \tau_2$ is a subtype of $\tau_3 \to \tau_4$ if $\tau_3$ is a subtype of $\tau_1$ (parameter types are contravariant) and $\tau_2$ is a subtype of $\tau_4$ (return types are covariant).}
+\label{fig:function-subtype-rules}
+\end{figure}
 
 \subsubsection{Type Checking}
-\checkrule{\funct{x}{\tau_1}{e}}{\arrowt{\tau_1}{\tau_2}}{\Gamma_1}{
-    \required{\tau_1} \quad
-    \checktype{\Gamma[x:\tau_1]}{e}{\tau_2}{\Gamma_1}
-}
+The type checking rules for function abstractions and application are shown in Figure~\ref{fig:function-check-rules}.
 
-\checkrule{\funct{x}{\tau_1}{e}}{\arrowt{\tau_1}{\tau_2}}{\Gamma_1}{
-    \nrequired{\tau_1} \\
-    \checktype{\Gamma[x:\tau_1]}{e}{\tau_2}{\Gamma_1} \quad x\notin Domain(\Gamma_1)
-}
-
-\checkrule{\funct{x}{\tau}{e}}{\arrowt{\tau_1}{\tau_2}}{\Gamma_1}{
-    \forcerequire{\tau}{\tau_1} \quad
-    \checktype{\Gamma[x:\tau_1]}{e}{\tau_2}{\Gamma_1} \quad
-    \Gamma_1(x)=\tau_1
-}
-
-\checkrule{\apply{e_1}{e_2}}{\tau_2}{\Gamma_1\cup\Gamma_2}{
-    \requiretype{\Gamma}{e_1}{\arrowt{\tau_1}{\tau_2}}{\Gamma_1} \quad
-    \requiretype{\Gamma}{e_2}{\tau_1}{\Gamma_2}
-}
+\begin{figure*}[ht]
+\centering
+\begin{framed}
+\begin{align*}
+\text{\textsc{Check-Lambda-Req:}} &\quad \infer{\checktype{\Gamma}{\funct{x}{\tau_1}{e}}{\arrowt{\tau_1}{\tau_2}}{\Gamma_1}}{\required{\tau_1} \quad \checktype{\Gamma[x:\tau_1]}{e}{\tau_2}{\Gamma_1}} \\
+\text{\textsc{Check-Lambda-NoReq:}} &\quad \infer{\checktype{\Gamma}{\funct{x}{\tau_1}{e}}{\arrowt{\tau_1}{\tau_2}}{\Gamma_1}}{
+\begin{array}{c}
+\nrequired{\tau_1} \\
+\checktype{\Gamma[x:\tau_1]}{e}{\tau_2}{\Gamma_1} \quad x \notin \text{Domain}(\Gamma_1)
+\end{array}
+} \\
+\text{\textsc{Check-Lambda-Force:}} &\quad \infer{\checktype{\Gamma}{\funct{x}{\tau}{e}}{\arrowt{\tau_1}{\tau_2}}{\Gamma_1}}{
+\begin{array}{c}
+\forcerequire{\tau}{\tau_1} \quad \checktype{\Gamma[x:\tau_1]}{e}{\tau_2}{\Gamma_1} \\
+\Gamma_1(x) = \tau_1
+\end{array}
+} \\
+\text{\textsc{Check-Apply:}} &\quad \infer{\checktype{\Gamma}{\apply{e_1}{e_2}}{\tau_2}{\Gamma_1 \cup \Gamma_2}}{\requiretype{\Gamma}{e_1}{\arrowt{\tau_1}{\tau_2}}{\Gamma_1} \quad \requiretype{\Gamma}{e_2}{\tau_1}{\Gamma_2}}
+\end{align*}
+\end{framed}
+\caption{Extended type checking rules to support first-class functions. The \textsc{Check-Lambda-*} rules handle type checking of lambda (anonymous function) expressions under three scenarios: when the parameter's type is required (\textsc{Check-Lambda-Req}), when the parameter has no special requirement (\textsc{Check-Lambda-NoReq}), and when a required subtype must be enforced for the parameter (\textsc{Check-Lambda-Force}). \textsc{Check-Apply} checks a function application by first ensuring the function expression has an arrow type and then requiring the argument expression to have the function's parameter type.}
+\label{fig:function-check-rules}
+\end{figure*}
 
 \subsubsection{Type Requiring}
-\requirerule{\funct{x}{\tau_1}{e}}{\arrowt{\tau_1}{\tau_2}}{\Gamma_1}{
-    \required{\tau_1} \quad
-    \requiretype{\Gamma[x:\tau_1]}{e}{\tau_2}{\Gamma_1}
+Finally, the requirement rules for function-related expressions are given in Figure~\ref{fig:function-require-rules}.
+
+\begin{figure*}[ht]
+\centering
+\begin{framed}
+\begin{align*}
+\text{\textsc{Require-Lambda-Req:}} &\quad \infer{\requiretype{\Gamma}{\funct{x}{\tau_1}{e}}{\arrowt{\tau_1}{\tau_2}}{\Gamma_1}}{\required{\tau_1} \quad \requiretype{\Gamma[x:\tau_1]}{e}{\tau_2}{\Gamma_1}} \\
+\text{\textsc{Require-Lambda-NoReq:}} &\quad \infer{\requiretype{\Gamma}{\funct{x}{\tau_1}{e}}{\arrowt{\tau_1}{\tau_2}}{\Gamma_1}}{
+\begin{array}{c}
+\nrequired{\tau_1} \\
+\requiretype{\Gamma[x:\tau_1]}{e}{\tau_2}{\Gamma_1} \quad x \notin \text{Domain}(\Gamma_1)
+\end{array}
+} \\
+\text{\textsc{Require-Lambda-Force:}} &\quad \infer{\requiretype{\Gamma}{\funct{x}{\tau}{e}}{\arrowt{\tau_1}{\tau_2}}{\Gamma_1}}{
+\begin{array}{c}
+\forcerequire{\tau}{\tau_1} \quad \requiretype{\Gamma[x:\tau_1]}{e}{\tau_2}{\Gamma_1} \\
+\Gamma_1(x) = \tau_1
+\end{array}
+} \\
+\text{\textsc{Require-Apply:}} &\quad \infer{\requiretype{\Gamma}{\apply{e_1}{e_2}}{\tau_2}{\Gamma_2 \cup \Gamma_3}}{
+\begin{array}{c}
+\checktype{\Gamma}{e_1}{\arrowt{\tau_3}{\tau_4}}{\Gamma_1} \quad \tau_1 <: \tau_3 \\
+\requiretype{\Gamma}{e_1}{\arrowt{\tau_1}{\tau_2}}{\Gamma_2} \quad \requiretype{\Gamma}{e_2}{\tau_1}{\Gamma_3}
+\end{array}
 }
-
-\requirerule{\funct{x}{\tau_1}{e}}{\arrowt{\tau_1}{\tau_2}}{\Gamma_1}{
-    \nrequired{\tau_1} \\
-    \requiretype{\Gamma[x:\tau_1]}{e}{\tau_2}{\Gamma_1} \quad x\notin Domain(\Gamma_1)
-}
-
-\requirerule{\funct{x}{\tau}{e}}{\arrowt{\tau_1}{\tau_2}}{\Gamma_1}{
-    \forcerequire{\tau}{\tau_1} \quad
-    \requiretype{\Gamma[x:\tau_1]}{e}{\tau_2}{\Gamma_1} \quad
-    \Gamma_1(x)=\tau_1
-}
-
-\requirerule{\apply{e_1}{e_2}}{\tau_2}{\Gamma_2\cup\Gamma_3}{
-    \checktype{\Gamma}{e_1}{\arrowt{\tau_3}{\tau_4}}{\Gamma_1} \quad \tau_1 <: \tau_3 \\
-    \requiretype{\Gamma}{e_1}{\arrowt{\tau_1}{\tau_2}}{\Gamma_2} \quad \requiretype{\Gamma}{e_2}{\tau_1}{\Gamma_3}
-}
-
-
+\end{align*}
+\end{framed}
+\caption{Extended requirement rules for first-class functions. \textsc{Require-Lambda-Req} enforces an expected parameter type on a lambda expression (if the parameter's type is required to be $\epsilon$). \textsc{Require-Lambda-NoReq} handles a lambda with no special parameter requirement (ensuring the parameter is not inadvertently inferred to a required type elsewhere). \textsc{Require-Lambda-Force} forces a lambda's parameter to have a specific subtype if needed. \textsc{Require-Apply} imposes requirements when a function is applied: it first checks that the function has a suitable arrow type (and may refine the expected parameter type $\tau_1$ if it was too general), and then requires the argument to have that parameter type $\tau_1$.}
+\label{fig:function-require-rules}
+\end{figure*}
 
 \section{Applying to Translation}
 
 \subsection{Propositions}
 
-% 위에서 정의한 rule대로, 아래와 같은 명제를 제시합니다.
-We propose the following propositions based on the rules defined above:
+Based on the above rules, we formulate two propositions about translating an enum type using this approach:
 
-% C 코드 $e$가 well-typed이다. $e'$은 $e$의 코드에서 타입 선언부에 enum type의 이름이 사용된 모든 변수의 선언부를 $\epsilon$으로 수정한 코드이다. 이 때,
-% 1. check(empty, e')가 모든 rule을 pass한다면, enum type은 정수 타입의 subtype으로 변환할 수 있음이 검증된다.
-% 2. checktype{}{}{}{...}라고 하자. 모든 x in domain(gamma1)에 대하여 x의 선언부 타입을 gamma1(x)로 수정한 expression e''은 well-typed이다.
-
-Let $e$ be a well-typed C code. Let $e'$ be the code obtained by modifying the declaration of all variables in $e$ where the name of the enum type is used in the type declaration to $\epsilon$. Then:
+Let $e$ be a well-typed C program, and let $e'$ be the program obtained by changing the declared type of every variable (and parameter) in $e$ that explicitly uses the enum type $\epsilon$ to $\epsilon$ (if it isn't already). Then:
 \begin{enumerate}
-    \item If $check(\emptyset, e')$ passes all rules, it is verified that the enum type can be translated as a subtype of the integer type.
-    \item Let $\checktype{\emptyset}{e'}{\tau}{\Gamma_1}$. If we modify the declaration of the type of every variable $x$ in $\Gamma$ to $\Gamma(x)$ to obtain the expression $e''$, then $e''$ is well-typed.
+    \item If $check(\emptyset,\, e')$ succeeds (i.e., all the type-checking rules can be applied without failure on $e'$), it verifies that the enum type $\epsilon$ can be treated as a subtype of the integer type (meaning that $\epsilon$ can be safely translated as a Rust enum type).
+    \item Suppose $\checktype{\emptyset}{e'}{\tau}{\Gamma_1}$ (the type checker infers type $\tau$ for $e'$ and produces environment $\Gamma_1$). If we then modify the declared type of every variable $x$ found in $\Gamma_1$ to $\Gamma_1(x)$ in the original program (producing a new program $e''$), then $e''$ is well-typed. In other words, after inferring the appropriate enum types via $\Gamma_1$, applying those types back to the program yields a consistent, type-correct program.
 \end{enumerate}
 
-% 위의 명제는 formal한 증명을 제공하지 않습니다. 대신, 이 명제가 올바르게 작동하는지 확인하기 위한 예시를 제공합니다. 이 예시들은 앞서 정의한 formal rule이 의도대로 작동함을 확인하는 데 사용됩니다.
-This report does not present a rigorous proof of the propositions. Instead, we provide examples to verify that these propositions work correctly. These examples serve to confirm that the formal rules defined earlier function as intended.
+We do not present a formal proof of these propositions here. Instead, we illustrate them with examples to show that the formal rules behave as intended.
 
 \subsection{Examples}
-
-% 해당 rule이 잘 작동하는지 확인하기 위한 예시를 제시합니다. epsilon이 0 값을 포함한다고 가정했을 때, 아래와 같은 코드를 생각해봅시다:
-We consider the following code, assuming that $\epsilon$ includes the value 0:
+We first consider a simple code fragment (assuming that $0 \in V_\epsilon$):
 \[
 \lett{x}{\Z}{0}{
     \{\ \lett{y}{\epsilon}{x}{\{\ 
@@ -585,13 +515,11 @@ We consider the following code, assuming that $\epsilon$ includes the value 0:
     \ \}}\ \}
 }\]
 
-% 우리가 정상적인 enum translation을 위하여 달성해야 하는 목표를 생각해봅니다. y의 타입은 epsilon으로 지정되었으므로, 개발자가 enum 타입으로 의도했다고 받아들여야 합니다. 해당 코드가 type error 없이 작동하기 위해서 x가 epsilon 타입이라고 subtype 추정을 해야 합니다. 이 추정은 x에 0이 대입되었으므로 올바릅니다. z는 epsilon 타입으로 지정되지 않았고 이외에 epsilon 타입과 연관된 사용이 없었으므로, 0으로 선언되었음에도 epsilon 타입으로 추정하지 않아야 합니다.
-Consider the goal we need to achieve for normal enum translation: since the type of $y$ is specified as $\epsilon$, we should assume that the developer intended it to be an enum type. To ensure that this code works without type errors, we need to perform subtype inference on $x$ to be of type $\epsilon$. This inference is valid since $x$ is assigned the value 0. However, $z$ is not specified as an $\epsilon$ type and has no other associations with $\epsilon$, so it should not be inferred as an $\epsilon$ type even though it is declared as 0.
+In this code, $y$ is explicitly declared with type $\epsilon$, so we interpret that as the developer intending $y$ to be of the enum type. To avoid any type errors, our system should infer that $x$ also has type $\epsilon$ because $x$ is initialized to $0$ (and we assumed $0 \in V_\epsilon$). Inferring $x:\epsilon$ is valid here since $0$ is one of $\epsilon$'s variant values. In contrast, $z$ is declared as an $\mathbb{Z}$ (integer) and has no connection to $\epsilon$ apart from coincidentally being assigned $0$. Therefore, $z$ should \emph{not} be inferred as type $\epsilon$.
 
-% 앞서 정의한 formal rule을 적용해보면, $x$만 $\epsilon$ 타입에 연관된다는 사실을 어렵지 않게 알 수 있습니다.
-Applying the formal rules defined earlier, we can easily determine that only $x$ is associated with the $\epsilon$ type.
-% 연관된 변수의 선언부를 수정함으로써, 다음과 같이 enum 타입이 잘 적용된 well-typed expression을 얻을 수 있습니다:
-By modifying the declaration of the associated variable, we obtain a well-typed expression with the enum type applied correctly:
+By applying the subtype inference rules, we find that only $x$ gets associated with the enum type $\epsilon$ (while $z$ remains an integer).
+
+If we then change the declaration of the associated variable $x$ to use type $\epsilon$ (as inferred), the resulting code becomes well-typed with the enum type correctly applied:
 \[
 \lett{x}{\epsilon}{0}{
     \{\ \lett{y}{\epsilon}{x}{\{\ 
@@ -599,9 +527,7 @@ By modifying the declaration of the associated variable, we obtain a well-typed 
     \ \}}\ \}
 }\]
 
-% 앞서 언급한 예시를 통해, 함수가 적용된 경우에도 이 접근법이 잘 작동함을 확인할 수 있습니다. 예를 들어, 아래와 같은 코드를 생각해봅시다:
-We can confirm that this approach works well even when functions are applied, as shown in the following example:
-
+We can also confirm that this approach works when functions are involved. Consider the following example:
 \[
 \begin{array}{l}
     \lett{ctoi}{\arrowt{\epsilon}{\Z}}{\funct{c}{\epsilon}{(3\times c)}}{}\\
@@ -610,9 +536,7 @@ We can confirm that this approach works well even when functions are applied, as
 \end{array}
 \]
 
-% 이 코드에서, ctoi 함수는 epsilon 타입의 파라미터를 받아 3을 곱한 값을 반환합니다. green은 Z 타입으로 선언되었지만, ctoi 함수에 적용되므로 epsilon 타입과 연관됩니다. 따라서, green은 epsilon 타입으로 추정되어야 합니다. 이 경우에도, formal rule을 적용하면 올바르게 추정할 수 있습니다.
-In this code, the \ensuremath{ctoi} function takes a parameter of type $\epsilon$ and returns the value multiplied by 3. Although \ensuremath{green} is declared as type \ensuremath{\Z}, it is associated with the $\epsilon$ type when applied to the \ensuremath{ctoi} function. Therefore, \ensuremath{green} should be inferred as type $\epsilon$. Again, applying the formal rules allows us to make the correct inference, resulting in the following well-typed expression:
-
+In this code, the function \texttt{ctoi} expects a parameter of type $\epsilon$ and returns an integer (the value multiplied by 3). The variable \texttt{green} is declared with type $\Z$ and assigned 1, but when we pass \texttt{green} to \texttt{ctoi}, that usage effectively associates \texttt{green} with the enum type $\epsilon$ (since \texttt{ctoi} requires an $\epsilon$ argument). Therefore, \texttt{green} should be inferred to have type $\epsilon$. Applying the formal rules confirms this inference, resulting in the following well-typed code (with \texttt{green} now declared as type $\epsilon$):
 \[
 \begin{array}{l}
     \lett{ctoi}{\arrowt{\epsilon}{\Z}}{\funct{c}{\epsilon}{(3\times c)}}{}\\
@@ -621,20 +545,14 @@ In this code, the \ensuremath{ctoi} function takes a parameter of type $\epsilon
 \end{array}
 \]
 
-% 이와 같은 예시를 통해, formal rule이 의도대로 작동함을 확인할 수 있습니다. 이 접근법은 C 코드에서 enum 타입을 Rust의 enum 타입으로 변환할 수 있는지 여부를 판단하고, 변환이 가능할 경우 integer type의 alias 대신에 Rust의 enum으로 변환하는 데 유용합니다.
-These examples demonstrate that the formal rules work as intended. This approach is useful for determining whether a C code's enum type can be translated to a Rust enum type and, if feasible, replacing the integer type alias with a Rust enum.
+These examples illustrate that the formal rules correctly identify when a C enum type can be translated to a Rust enum type and guide the necessary transformations. The subtype inference approach helps determine when a C enum can be upgraded to a Rust enum in translation, and it carries out the replacement of the integer alias with a Rust enum where it is valid to do so.
 
 \section{Conclusion}
-% 무엇을 달성했는가
-In this report, we have proposed a novel approach to improve C2Rust's enum translation by introducing subtype inference. This approach allows us to determine whether a C enum can be translated to a Rust enum and, if feasible, replaces the integer type alias with a Rust enum. By leveraging the value safety and expressiveness of Rust's enums, we enhance the translation process and ensure that the resulting code is idiomatic and well-typed.
+In this report, we presented an approach to enhance C2Rust's enum translation by introducing subtype inference. Our approach determines when a given C enum can be safely translated into a Rust enum and, if feasible, replaces the integer type alias with a proper Rust enum. By leveraging Rust's value safety and expressiveness for enums, the translation process produces output code that is more idiomatic and maintains type correctness.
 
-% 어떤 효과가 있는가
-The proposed approach has several benefits. First, it increases the accuracy of the translation process by ensuring that the types are correctly inferred and associated. This leads to fewer type errors and a smoother migration from C to Rust. Second, by replacing integer type aliases with Rust enums, we improve the readability and maintainability of the code. Developers can more easily understand the intent behind the code when enums are used instead of generic integer types.
+This approach offers several benefits. First, it improves the accuracy of the translation by inferring and enforcing the intended enum types, which leads to fewer type errors and a smoother migration from C to Rust. Second, by replacing opaque integer aliases with meaningful Rust enums, it enhances the readability and maintainability of the code. Developers can more easily understand the intent of the code when enums are used instead of generic integers.
 
-% 어떤 것이 개선되어야 하는가
-% 본 연구는 strict한 type system을 기반으로 접근하였으므로, 실제로는 enum 타입으로 해석할 수 있는 경우에도 변환을 실패할 수 있습니다. 예를 들어, 아래와 같은 매우 흔한 패턴의 C 코드가 있다고 가정해봅시다:
-
-However, this research is based on a strict type system, so it may fail to translate even in cases where it can be interpreted as an enum type. For example, consider the following common C code pattern:
+However, our approach in its current form relies on a strict static type analysis and may fail in certain cases that a human might still consider valid enum usage. For example, consider a common C idiom:
 
 \begin{lstlisting}[language=C]
 enum Day {
@@ -646,12 +564,5 @@ enum Day next_day(enum Day day) {
 }
 \end{lstlisting}
 
-% 이 코드는 C에서 enum 타입을 사용하여 요일을 표현하고, 다음 요일을 계산하는 함수입니다. 이 경우 enum으로의 변환이 성공적이려면 return 값이 항상 0부터 6 사이의 값임을 도출해낼 수 있어야 합니다. 하지만 type system 만으로는 이를 보장할 수 없습니다. 따라서, 본 연구에서 제시한 formal rule은 이러한 경우에 enum 타입으로의 변환을 실패합니다.
-
-This code uses an enum type in C to represent days of the week and calculates the next day. For a successful translation to an enum, it must be deduced that the return value is always between 0 and 6. However, the type system alone cannot guarantee this. Therefore, the formal rules proposed in this research will fail to translate this case to an enum type.
-
-% 이러한 경우를 해결하기 위해서는, 정수 타입의 범위를 추론하는 추가적인 분석이 필요합니다. 사칙연산이 있는 경우에 enum 타입이 아니라고 단정짓는 것이 아니라, 그 expression이 가질 수 있는 값의 constraint를 추론하여 enum 타입으로 변환할 수 있는지 여부를 판단해야 합니다. 이러한 분석을 통해, C 코드에서 enum 타입을 Rust의 enum 타입으로 변환할 수 있는 경우를 더 많이 포착할 수 있을 것입니다.
-
-To address such cases, additional analysis is needed to infer the range of integer types. Instead of concluding that an expression with arithmetic operations cannot be an enum type, we should deduce the constraints on the values that the expression can take and determine whether it can be translated to an enum type. This analysis would allow us to capture more cases where a C code's enum type can be translated to a Rust enum type.
-
+This code uses an enum to represent days of the week and calculates the next day. For a successful translation to a Rust enum, we would need to deduce that the return value of \texttt{next\_day} is always between 0 and 6 (i.e., a valid \texttt{Day}). However, the type system alone cannot guarantee this property, so our formal rules would not allow translating the return type of \texttt{next\_day} as an enum. Handling such cases would require additional analysis, such as range analysis or value constraint inference. Instead of automatically concluding that an expression involving arithmetic cannot correspond to an enum, the translator could attempt to deduce constraints on the expression's possible values and determine whether it stays within the valid range of an enum's variants. Incorporating such analysis could enable us to capture more cases where a C enum type can be translated to a Rust enum type.
 \end{document}
