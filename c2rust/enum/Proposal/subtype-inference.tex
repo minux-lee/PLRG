@@ -287,15 +287,15 @@ We first define an abstract syntax for a simple language of expressions (without
 
 \vspace{0.5em}
 \begin{bnf}
-    $\tau$ ::= $\epsilon$ \;|\; $\Z$
+    $\tau$ ::= $\epsilon$ | $\Z$
 \end{bnf}
 
 \begin{bnf}
     $e$ ::= \lett{x}{\tau}{e}{e} 
-    \;|\; $x$ 
-    \;|\; $n$ 
-    \;|\; \binop{e}{e} 
-    \;|\; \ternary{e}{e}{e}
+    | $x$ 
+    | $n$ 
+    | \binop{e}{e} 
+    | \ternary{e}{e}{e}
 \end{bnf}
 \vspace{0.5em}
 
@@ -406,13 +406,13 @@ We now extend the language syntax to include first-class functions:
 
 \vspace{0.5em}
 \begin{bnf}
-    $\tau$ ::= $\cdots$ \;|\; \arrowt{\tau}{\tau}
+    $\tau$ ::= $\cdots$ | \arrowt{\tau}{\tau}
 \end{bnf}
 
 \begin{bnf}
     $e$ ::= $\cdots$ 
-    \;|\; \funct{x}{\tau}{e} 
-    \;|\; \apply{e}{e}
+    | \funct{x}{\tau}{e} 
+    | \apply{e}{e}
 \end{bnf}
 \vspace{0.5em}
 
