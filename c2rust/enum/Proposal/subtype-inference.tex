@@ -1,4 +1,4 @@
-\documentclass[10pt,conference]{IEEEtran}
+\documentclass[peerreview, 10pt]{IEEEtran}
 
 \usepackage{times}
 \usepackage{graphicx}
@@ -351,13 +351,13 @@ The type checking rules for expressions (without functions) are given in Figure~
 \text{\textsc{Check-BinOp:}} &\quad \infer{\checktype{\Gamma}{\binop{e_1}{e_2}}{\Z}{\Gamma_1 \cup \Gamma_2}}{\checktype{\Gamma}{e_1}{\Z}{\Gamma_1} \quad \checktype{\Gamma}{e_2}{\Z}{\Gamma_2}} \\
 \text{\textsc{Check-Ternary:}} &\quad \infer{\checktype{\Gamma}{\ternary{e_1}{e_2}{e_3}}{\tau}{\Gamma_1 \cup \Gamma_2 \cup \Gamma 3}}{
 \begin{array}{c}
-\checktype{\Gamma}{e_1}{\Z}{\Gamma_1} \\
+\checktype{\Gamma}{e_1}{\Z}{\Gamma_1} \quad
 \checktype{\Gamma}{e_2}{\tau}{\Gamma_2} \quad \checktype{\Gamma}{e_3}{\tau}{\Gamma_3}
 \end{array}
 } \\
 \text{\textsc{Check-Let-Req:}} &\quad \infer{\checktype{\Gamma}{\lett{x}{\tau_1}{e_1}{e_2}}{\tau_2}{\Gamma_1 \cup \Gamma_2}}{
 \begin{array}{c}
-\required{\tau_1} \quad \requiretype{\Gamma}{e_1}{\tau_1}{\Gamma_1} \\
+\required{\tau_1} \quad \requiretype{\Gamma}{e_1}{\tau_1}{\Gamma_1} \quad
 \checktype{\Gamma[x:\tau_1]}{e_2}{\tau_2}{\Gamma_2}
 \end{array}
 } \\
@@ -369,7 +369,7 @@ The type checking rules for expressions (without functions) are given in Figure~
 } \\
 \text{\textsc{Check-Let-Force:}} &\quad \infer{\checktype{\Gamma}{\lett{x}{\tau_1}{e_1}{e_2}}{\tau_2}{\Gamma_1 \cup \Gamma_2}}{
 \begin{array}{c}
-\forcerequire{\tau_1}{\tau} \quad \requiretype{\Gamma}{e_1}{\tau}{\Gamma_1} \\
+\forcerequire{\tau_1}{\tau} \quad \requiretype{\Gamma}{e_1}{\tau}{\Gamma_1} \quad
 \checktype{\Gamma[x:\tau]}{e_2}{\tau_2}{\Gamma_2} \quad \Gamma_2(x) = \tau
 \end{array}
 }
@@ -388,17 +388,17 @@ The rules for requiring (asserting) specific types are given in Figure~\ref{fig:
 \begin{align*}
 \text{\textsc{Require-Var-Env:}} &\quad \infer{\requiretype{\Gamma}{x}{\tau}{[x:\tau]}}{\Gamma(x) = \tau' \quad \tau <: \tau'} \\
 \text{\textsc{Require-ConstEnum:}} &\quad \infer{\requiretype{\Gamma}{n}{\epsilon}{\emptyset}}{n \in V_\epsilon} \\
+\text{\textsc{Require-Subsumption:}} &\quad \infer{\requiretype{\Gamma}{e}{\tau}{\Gamma_1}}{\checktype{\Gamma}{e}{\tau'}{\Gamma_1} \quad \tau' <: \tau} \\
 \text{\textsc{Require-Expr-NoReq:}} &\quad \infer{\requiretype{\Gamma}{e}{\tau}{\Gamma_1}}{\nrequired{\tau} \quad \checktype{\Gamma}{e}{\tau}{\Gamma_1}} \\
-\text{\textsc{Require-Var-Expr:}} &\quad \infer{\requiretype{\Gamma}{x}{\tau}{\Gamma_1}}{\checktype{\Gamma}{x}{\tau'}{\Gamma_1} \quad \tau' <: \tau} \\
 \text{\textsc{Require-Ternary:}} &\quad \infer{\requiretype{\Gamma}{\ternary{e_1}{e_2}{e_3}}{\tau}{\Gamma_1}}{
 \begin{array}{c}
-\checktype{\Gamma}{e_1}{\Z}{\Gamma_1} \\
+\checktype{\Gamma}{e_1}{\Z}{\Gamma_1} \quad
 \requiretype{\Gamma}{e_2}{\tau}{\Gamma_2} \quad \requiretype{\Gamma}{e_3}{\tau}{\Gamma_3}
 \end{array}
 } \\
 \text{\textsc{Require-Let-Req:}} &\quad \infer{\requiretype{\Gamma}{\lett{x}{\tau_1}{e_1}{e_2}}{\tau_2}{\Gamma_1 \cup \Gamma_2}}{
 \begin{array}{c}
-\required{\tau_1} \quad \requiretype{\Gamma}{e_1}{\tau_1}{\Gamma_1} \\
+\required{\tau_1} \quad \requiretype{\Gamma}{e_1}{\tau_1}{\Gamma_1} \quad
 \requiretype{\Gamma[x:\tau_1]}{e_2}{\tau_2}{\Gamma_2}
 \end{array}
 } \\
@@ -410,13 +410,13 @@ The rules for requiring (asserting) specific types are given in Figure~\ref{fig:
 } \\
 \text{\textsc{Require-Let-Force:}} &\quad \infer{\requiretype{\Gamma}{\lett{x}{\tau_1}{e_1}{e_2}}{\tau_2}{\Gamma_1 \cup \Gamma_2}}{
 \begin{array}{c}
-\forcerequire{\tau_1}{\tau} \quad \requiretype{\Gamma}{e_1}{\tau}{\Gamma_1} \\
+\forcerequire{\tau_1}{\tau} \quad \requiretype{\Gamma}{e_1}{\tau}{\Gamma_1} \quad
 \requiretype{\Gamma[x:\tau]}{e_2}{\tau_2}{\Gamma_2} \quad \Gamma_2(x) = \tau
 \end{array}
 }
 \end{align*}
 \end{framed}
-\caption{Type requirement (``require'') rules for the base language. \textsc{Require-Var-Env} adds a variable to the environment with a required type (if that required type $\tau$ is a subtype of the variable's original type $\tau'$). \textsc{Require-ConstEnum} asserts that a numeric literal has type $\epsilon$ if its value is in $V_\epsilon$. \textsc{Require-Expr-NoReq} processes an expression normally when no special requirement applies. \textsc{Require-Var-Expr} handles requiring a variable expression to have a certain type by checking it and ensuring the actual type is a subtype of the required type. \textsc{Require-Ternary} enforces that both branches of a conditional expression meet the required type. Finally, \textsc{Require-Let-Req}, \textsc{Require-Let-NoReq}, and \textsc{Require-Let-Force} impose type requirements in let-binding contexts analogously to the type checking rules.}
+\caption{Type requirement (``require'') rules for the base language. \textsc{Require-Var-Env} adds a variable to the environment with a required type (if that required type $\tau$ is a subtype of the variable's original type $\tau'$). \textsc{Require-ConstEnum} asserts that a numeric literal has type $\epsilon$ if its value is in $V_\epsilon$. \textsc{Require-Expr-NoReq} processes an expression normally when no special requirement applies. \textsc{Require-Subsumption} handles requiring a variable expression to have a certain type by checking it and ensuring the actual type is a subtype of the required type. \textsc{Require-Ternary} enforces that both branches of a conditional expression meet the required type. Finally, \textsc{Require-Let-Req}, \textsc{Require-Let-NoReq}, and \textsc{Require-Let-Force} impose type requirements in let-binding contexts analogously to the type checking rules.}
 \label{fig:type-requiring-rules}
 \end{figure*}
 
@@ -463,14 +463,13 @@ The type checking rules for function abstractions and application are shown in F
 \text{\textsc{Check-Lambda-Req:}} &\quad \infer{\checktype{\Gamma}{\funct{x}{\tau_1}{e}}{\arrowt{\tau_1}{\tau_2}}{\Gamma_1}}{\required{\tau_1} \quad \checktype{\Gamma[x:\tau_1]}{e}{\tau_2}{\Gamma_1}} \\
 \text{\textsc{Check-Lambda-NoReq:}} &\quad \infer{\checktype{\Gamma}{\funct{x}{\tau_1}{e}}{\arrowt{\tau_1}{\tau_2}}{\Gamma_1}}{
 \begin{array}{c}
-\nrequired{\tau_1} \\
+\nrequired{\tau_1} \quad
 \checktype{\Gamma[x:\tau_1]}{e}{\tau_2}{\Gamma_1} \quad x \notin \text{Domain}(\Gamma_1)
 \end{array}
 } \\
 \text{\textsc{Check-Lambda-Force:}} &\quad \infer{\checktype{\Gamma}{\funct{x}{\tau}{e}}{\arrowt{\tau_1}{\tau_2}}{\Gamma_1}}{
 \begin{array}{c}
-\forcerequire{\tau}{\tau_1} \quad \checktype{\Gamma[x:\tau_1]}{e}{\tau_2}{\Gamma_1} \\
-\Gamma_1(x) = \tau_1
+\forcerequire{\tau}{\tau_1} \quad \checktype{\Gamma[x:\tau_1]}{e}{\tau_2}{\Gamma_1} \quad \Gamma_1(x) = \tau_1
 \end{array}
 } \\
 \text{\textsc{Check-Apply:}} &\quad \infer{\checktype{\Gamma}{\apply{e_1}{e_2}}{\tau_2}{\Gamma_1 \cup \Gamma_2}}{\requiretype{\Gamma}{e_1}{\arrowt{\tau_1}{\tau_2}}{\Gamma_1} \quad \requiretype{\Gamma}{e_2}{\tau_1}{\Gamma_2}}
@@ -490,14 +489,13 @@ Finally, the requirement rules for function-related expressions are given in Fig
 \text{\textsc{Require-Lambda-Req:}} &\quad \infer{\requiretype{\Gamma}{\funct{x}{\tau_1}{e}}{\arrowt{\tau_1}{\tau_2}}{\Gamma_1}}{\required{\tau_1} \quad \requiretype{\Gamma[x:\tau_1]}{e}{\tau_2}{\Gamma_1}} \\
 \text{\textsc{Require-Lambda-NoReq:}} &\quad \infer{\requiretype{\Gamma}{\funct{x}{\tau_1}{e}}{\arrowt{\tau_1}{\tau_2}}{\Gamma_1}}{
 \begin{array}{c}
-\nrequired{\tau_1} \\
+\nrequired{\tau_1} \quad
 \requiretype{\Gamma[x:\tau_1]}{e}{\tau_2}{\Gamma_1} \quad x \notin \text{Domain}(\Gamma_1)
 \end{array}
 } \\
 \text{\textsc{Require-Lambda-Force:}} &\quad \infer{\requiretype{\Gamma}{\funct{x}{\tau}{e}}{\arrowt{\tau_1}{\tau_2}}{\Gamma_1}}{
 \begin{array}{c}
-\forcerequire{\tau}{\tau_1} \quad \requiretype{\Gamma[x:\tau_1]}{e}{\tau_2}{\Gamma_1} \\
-\Gamma_1(x) = \tau_1
+\forcerequire{\tau}{\tau_1} \quad \requiretype{\Gamma[x:\tau_1]}{e}{\tau_2}{\Gamma_1} \quad \Gamma_1(x) = \tau_1
 \end{array}
 } \\
 \text{\textsc{Require-Apply:}} &\quad \infer{\requiretype{\Gamma}{\apply{e_1}{e_2}}{\tau_2}{\Gamma_2 \cup \Gamma_3}}{
