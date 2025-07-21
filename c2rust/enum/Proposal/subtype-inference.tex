@@ -312,7 +312,7 @@ We treat the enum type $\epsilon$ as a subtype of the integer type $\Z$. We also
 \text{\textsc{Force-Req:}} &\quad \infer{\forcerequire{\tau_1}{\tau_2}}{\required{\tau_2} \quad \tau_2 <: \tau_1}
 \end{align*}
 \end{framed}
-\caption{Subtype relation and required-type rules (for the base language). Rule \textsc{Sub-Epsilon} declares the enum type $\epsilon$ to be a subtype of the integer type $\Z$, and \textsc{Sub-Refl} allows any type to be a subtype of itself. Rule \textsc{Req-Enum} tags $\epsilon$ as a required type (indicating that contexts expecting this type must enforce it), and \textsc{Force-Req} states that if $\tau_2$ is required and $\tau_2 <: \tau_1$, then $\tau_1$ is forced to require $\tau_2$.}
+\caption{Subtype relation and required-type rules (for the base language). Rule \textsc{Sub-Epsilon} declares the enum type $\epsilon$ to be a subtype of the integer type $\Z$, and \textsc{Sub-Refl} allows any type to be a subtype of itself. Rule \textsc{Req-Enum} tags $\epsilon$ as a required type (indicating that contexts expecting this type must enforce it), and \textsc{Force-Req} states that if $\tau_2$ is required and $\tau_2 <: \tau_1$, then $\tau_1$ can be forced to a required subtype $\tau_2$.}
 \label{fig:subtype-required-rules}
 \end{figure}
 
