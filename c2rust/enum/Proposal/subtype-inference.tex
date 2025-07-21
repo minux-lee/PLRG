@@ -129,10 +129,16 @@ enum Color {
 }
 
 fn main() {
-    let mut color = Color::R;
-    assert!(color as i32 == 0);
-    // color = 4; // error: mismatched types
-    // color = 4 as Color; // error: can't cast integer to enum
+    use std::mem::transmute;
+
+    assert_eq!(Color::R as i32, 0);
+    assert!(matches!(
+        unsafe { transmute::<i32, Color>(0) },
+        Color::R
+    ));
+    // let color: Color = 4; // error
+    // let color: Color = 4 as Color; // error
+    let color: Color = unsafe { transmute::<i32, Color>(4) }; // Undefined behavior
 }
 \end{lstlisting}
 
@@ -235,7 +241,21 @@ int foo() {
 }
 \end{lstlisting}
 
-In the \texttt{foo} function above, C allows an implicit conversion: the constant integer \texttt{green} (value 1) is passed to \texttt{ctoi}, which expects an enum \texttt{Color}. Rust, however, does not permit implicitly or explicitly casting an integer to an enum type. As a result, calling \texttt{ctoi(green)} would not compile in Rust (even an attempt like \texttt{ctoi(green as Color)} is disallowed). This scenario highlights why C2Rust sticks to integer types for enums; a na\"ive direct conversion would break here. We need a more nuanced approach to handle such cases. To address this, we propose a technique called \emph{subtype inference}.
+\begin{lstlisting}[language=Rust]
+// ...
+
+fn foo() -> libc::c_int {
+    use std::mem::transmute;
+    let green: libc::c_uint = 1;
+    // return ctoi(green); // error
+    // return ctoi(green as Color); // error
+    return ctoi(unsafe { 
+        transmute::<libc::c_uint, Color>(green) 
+    }); // only workaround, but unsafe
+}
+\end{lstlisting}
+
+In the \texttt{foo} function above, C allows an implicit conversion: the constant integer \texttt{green} (value 1) is passed to \texttt{ctoi}, which expects an enum \texttt{Color}. Rust, however, does not permit implicitly or explicitly casting an integer to an enum type. As a result, calling \texttt{ctoi(green)} would not compile in Rust, even an attempt like \texttt{ctoi(green as Color)} is disallowed. Only a workaround using \texttt{transmute} allows passing \texttt{green} to \texttt{ctoi}, but this is unsafe and can lead to undefined behavior if \texttt{green} does not correspond to a valid \texttt{Color} variant. This scenario highlights why C2Rust sticks to integer types for enums; a na\"ive direct conversion would break here. We need a more nuanced approach to handle such cases. To address this, we propose a technique called \emph{subtype inference}.
 
 \subsection{Subtype Inference}
 
