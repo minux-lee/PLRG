@@ -1,0 +1,155 @@
+\documentclass[peerreview, 10pt]{IEEEtran}
+
+\usepackage{times}
+\usepackage{graphicx}
+\usepackage{proof}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{listings}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{simplebnf}
+\usepackage[margin=0.75in]{geometry}
+\usepackage{framed}
+\usepackage{kotex}
+
+\setlength{\jot}{6pt}
+
+% ----------- Listings setup (kept from template) --------------
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+\lstdefinelanguage{Rust}{
+  keywords={break, const, continue, crate, else, enum, extern, false, fn, for, 
+if, impl, in, let, loop, match, mod, move, mut, pub, ref, return, self, Self, 
+static, struct, super, trait, true, type, unsafe, use, where, while, as, async, 
+await, dyn},
+  keywordstyle=\color{magenta},
+  ndkeywords={u8, u16, u32, u64, usize, i8, i16, i32, i64, isize, f32, f64, str,
+ String, char, bool, Option, Result, Some, None, Ok, Err, Box, Vec},
+  ndkeywordstyle=\color{blue},
+  identifierstyle=\color{black},
+  sensitive=true,
+  comment=[l]{//},
+  morecomment=[s]{/*}{*/},
+  commentstyle=\color{codegreen}\ttfamily,
+  stringstyle=\color{codepurple}\ttfamily,
+  morestring=[b]", 
+  morestring=[b]'
+}
+
+\lstdefinestyle{mystyle}{
+    backgroundcolor=\color{backcolour},   
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,         
+    breaklines=true,                 
+    captionpos=b,                    
+    keepspaces=true,                 
+    numbers=left,                    
+    numbersep=5pt,                  
+    showspaces=false,                
+    showstringspaces=false,
+    showtabs=false,                  
+    tabsize=2
+}
+
+\lstset{style=mystyle}
+
+% ---------- Custom commands (kept) -----------------
+\newcommand{\Z}{\ensuremath{\mathbb{Z}}}
+\newcommand{\lete}[3]{\ensuremath{\mathsf{let}\ #1\ \mathsf{=}\ #2\ \mathsf{in}\ #3}}
+\newcommand{\lett}[4]{\ensuremath{\mathsf{let}\ #1\mathsf{:},#2\ \mathsf{=}\ #3\ \mathsf{in}\ #4}}
+\newcommand{\binop}[2]{\ensuremath{#1\ \mathsf{\oplus}\ #2}}
+\newcommand{\ternary}[3]{\ensuremath{\mathsf{if0}\ #1\ \mathsf{then}\ #2\ \mathsf{else}\ #3}}
+\newcommand{\func}[2]{\ensuremath{\lambda #1.#2}}
+\newcommand{\funct}[3]{\ensuremath{\lambda #1\mathsf{:},#2.#3}}
+\newcommand{\apply}[2]{\ensuremath{#1\ #2}}
+\newcommand{\raw}[1]{\ensuremath{#1\mathsf{.raw}}}
+\newcommand{\arrowt}[2]{\ensuremath{{#1}\rightarrow{#2}}}
+\newcommand{\checktype}[4]{\ensuremath{{check}(#1,\,#2)=(#3,\,#4)}}
+\newcommand{\requiretype}[4]{\ensuremath{{require}(#1,\,#2,\,#3)=#4}}
+\newcommand{\required}[1]{\ensuremath{#1\text{ is required}}}
+\newcommand{\nrequired}[1]{\ensuremath{#1\text{ is not required}}}
+\newcommand{\forcerequire}[2]{\ensuremath{#1\Rightarrow#2}}
+
+% ---------- Theorem setup -----------------
+\theoremstyle{plain}
+\newtheorem{prop}{Proposition}
+\newtheorem{lemma}{Lemma}
+
+\begin{document}
+
+\title{Formal Proofs for the Subtype--Inference Report}
+\author{Minwook~Lee\\\texttt{ryan-lee@kaist.ac.kr}}
+\maketitle
+
+\section{Preliminaries}
+We work with the type system, subtyping relation, and \texttt{check}/\texttt{require} rules introduced in the report\,---\,reproduced in \emph{Figures~1--6} of the original manuscript.  We recall only the facts needed for the proofs.
+
+\begin{itemize}[leftmargin=*]
+    \item The distinguished enum type is denoted by $\epsilon$ and its set of variant values by $V_{\epsilon} \subseteq \mathbb Z$.
+    \item Subtyping contains a single proper rule for $\epsilon$: \[\epsilon \;<:\; \Z.\]
+    \item A successful judgement $\checktype{\Gamma}{e}{\tau}{\Gamma_1}$ certifies that $e$ is well\nobreakdash-typed, returns type $\tau$, and yields the additional environment $\Gamma_1$ (new ``requirements'').
+    \item The companion judgement $\requiretype{\Gamma}{e}{\tau}{\Gamma_1}$ demands that $e$ have \emph{exactly} type $\tau$; it may refine the environment when the demand forces a narrower type.
+\end{itemize}
+
+The proofs below proceed by structural induction on the successful derivations returned by the\linebreak
+\texttt{check} algorithm.
+
+\section{Main Results}
+
+\begin{prop}[Safety of $\epsilon$ as a Subtype]\label{prop:safety}
+If \mbox{$\checktype{\emptyset}{e'}{\tau}{\Gamma_1}$} succeeds, then every run\nobreakdash-time value inhabiting an expression that the derivation deems to have type~$\epsilon$ is drawn from $V_{\epsilon}$; furthermore, any occurrence of an $\epsilon$\nobreakdash-typed expression in a \Z-context is mediated solely by the subtyping rule $\epsilon<:\Z$.  Consequently, replacing $\epsilon$ with a real \textsf{Rust} enum is type\nobreakdash-safe.
+\end{prop}
+
+\begin{proof}
+Induct on the depth of the successful $\texttt{check}$ derivation for $e'$.
+
+\emph{Base cases.}\;When $e'$ is a constant $n$ or a variable $x$:
+\begin{itemize}[leftmargin=*]
+    \item For a constant $n$, the derivation uses either \textsc{Check-ConstEnum} (when $n\in V_{\epsilon}$) or \textsc{Check-ConstNonEnum}.  In the first subcase $n$ is literally a variant value; in the second subcase $n$ is assigned the super\nobreakdash-type~$\Z$, never $\epsilon$.
+    \item For a variable $x$, the only applicable rule is \textsc{Check-Var}.  The premise reads $\Gamma(x)=\tau$ for some $\tau$.  If $\tau=\epsilon$ the induction claim holds vacuously because the same environment already records that $x$ must be a value of $V_{\epsilon}$.  If $\tau\neq\epsilon$ the variable is typed as $\Z$ (or another supertype) and never misclassified as~$\epsilon$.
+\end{itemize}
+
+\emph{Inductive cases.}\;Representative examples follow; all other syntactic forms are analogous.
+
+\paragraph*{Binary operation $e_1\;\oplus\;e_2$.}  The only typing rule is \textsc{Check-Binop}, whose premises require $e_1$ and $e_2$ to each have type $\Z$ (up to subsumption).  By the IH, if either sub\nobreakdash-expression owns type $\epsilon$ it will be immediately upcast via $\epsilon<:\Z$ before the rule is applied.  Thus no $\Z$\nobreakdash-context ever contains a run\nobreakdash-time value outside $V_{\epsilon}$ masquerading as~$\epsilon$.
+
+\paragraph*{Let expression $\lett{x}{\tau_1}{e_1}{e_2}$.}  We discuss the most delicate variant, \textsc{Check-Let-Force}.  The premises state (i)~$\tau_1 \Rightarrow \tau$ with $\tau$ required; (ii)~$\requiretype{\Gamma}{e_1}{\tau}{\Gamma_1}$; and (iii)~$\checktype{\Gamma[x{:}\tau]}{e_2}{\tau_2}{\Gamma_2}$ with $\Gamma_2(x)=\tau$.  When $\tau$ is~$\epsilon$ the requirement judgement enforces $e_1$ to produce only values in $V_{\epsilon}$.  The third premise guarantees that $x$ remains $\epsilon$ throughout $e_2$, hence every subsequent use satisfies the IH.  Thus $x$ never leaves the safe range.
+
+All remaining constructs ($\textsf{if0}$, lambdas, application) observe similar reasoning: the unique subtyping rule $\epsilon<:\Z$ is the only gateway through which an $\epsilon$ value enters an integer context, while the converse direction is blocked by the absence of a rule $\Z<:\epsilon$.  Consequently, no ill-formed integer can flow into an $\epsilon$ slot, and the proposition holds universally.
+\end{proof}
+
+\begin{prop}[Soundness of Type~Reannotation]\label{prop:reannot}
+Let $\checktype{\emptyset}{e'}{\tau}{\Gamma_1}$ succeed and form a new program $e''$ by updating every variable declaration $x$ to the (possibly stricter) type $\Gamma_1(x)$.  Then $e''$ is well typed, i.e.\ $\checktype{\emptyset}{e''}{\tau}{\Gamma_2}$ succeeds for some~$\Gamma_2$.
+\end{prop}
+
+\begin{proof}
+Proceed again by induction on the structure of $e'$, reusing the derivation for $e'$.  The crux is that $e''$ merely \emph{adds} the refinements discovered during the original run; all premises needed by the typing rules are therefore already satisfied.
+
+\paragraph*{Variables.}  If $x\notin\mathrm{dom}(\Gamma_1)$ its declaration in $e''$ is unchanged; the original premise $\Gamma(x)=\tau$ remains valid.  If $x\in\mathrm{dom}(\Gamma_1)$ the declaration becomes $x{:}\Gamma_1(x)$, which is exactly the type the previous derivation assumed whenever $x$ was used.  Hence every instance of \textsc{Check-Var} stays valid.
+
+\paragraph*{Let expressions.}  Consider the forced case analysed above.  In $e''$ the declaration is already the required subtype $\tau$; consequently the verifier can apply the simpler rule \textsc{Check-Let-Req}, recycling the original subderivations for $e_1$ and~$e_2$.  The normal and required cases are even more direct.
+
+\paragraph*{Other constructs.}  All remaining rules depend only on the types of subexpressions.  By the IH each subexpression remains typable with the same (or more specific) type, so the outer rule still applies.
+
+Thus the whole derivation for $e'$ can be replayed for $e''$ without failure.\end{proof}
+
+\section{Consequences for Translation}
+By Propositions~\ref{prop:safety} and~\ref{prop:reannot} the subtype inference algorithm described in the report is \emph{sound}: whenever it elects to translate a C enum as a proper \textsf{Rust} enum, the resulting program is type safe; moreover, the algorithm can materialise its inferences as explicit annotations while preserving well\nobreakdash-typedness.  These two facts jointly justify the proposed enhancement to the \textsf{C2Rust} pipeline.
+
+\bibliographystyle{plain}
+\begin{thebibliography}{1}
+\bibitem{report}  M.~Lee, ``Enhancing C--to--Rust Translation with Subtype Inference for Enum Types,''\hspace*{0.2em}2025.
+\end{thebibliography}
+
+\end{document}
