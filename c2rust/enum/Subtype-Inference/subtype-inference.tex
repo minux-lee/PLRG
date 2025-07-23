@@ -77,6 +77,7 @@ await, dyn},
 \newcommand{\required}[1]{\ensuremath{#1\text{ is required}}}
 \newcommand{\nrequired}[1]{\ensuremath{#1\text{ is not required}}}
 \newcommand{\forcerequire}[2]{\ensuremath{#1\Rightarrow#2}}
+\newcommand{\domain}[1]{\ensuremath{\text{Domain}(#1)}}
 
 \begin{document}
 
@@ -319,20 +320,31 @@ We first define an abstract syntax for a simple language of expressions (without
 \end{bnf}
 \vspace{0.5em}
 
-\subsubsection{Subtype and Required Type}
-We treat the enum type $\epsilon$ as a subtype of the integer type $\Z$. We also introduce a notion of a "required" type for enforcing enum types in certain contexts. The formal rules for subtyping and required types are given in Figure~\ref{fig:subtype-required-rules}.
+\subsubsection{Subtype, Required Type, and Type Environment Rules}
+We treat the enum type $\epsilon$ as a subtype of the integer type $\Z$. We also introduce a notion of a ``required" type for enforcing enum types in certain contexts. The formal rules for subtyping, required types, and type environments are given in Figure~\ref{fig:subtype-required-rules}. The definition of the lower bound type, $\sqcap$, is in Appendix.
 
 \begin{figure}[ht]
 \centering
 \begin{framed}
-\begin{align*}
-\text{\textsc{Sub-Epsilon:}} &\quad \epsilon <: \Z \\
-\text{\textsc{Sub-Refl:}} &\quad \tau <: \tau \\
+    \[
+\begin{gathered}
+\begin{array}{rcrc}
+\text{\textsc{Sub-Epsilon:}} &\quad \epsilon <: \Z &
 \text{\textsc{Req-Enum:}} &\quad \infer{\required{\tau}}{\tau = \epsilon} \\
-\text{\textsc{Force-Req:}} &\quad \infer{\forcerequire{\tau_1}{\tau_2}}{\required{\tau_2} \quad \tau_2 <: \tau_1}
-\end{align*}
+\text{\textsc{Sub-Refl:}} &\quad \tau <: \tau &
+\text{\textsc{Force-Req:}} &\quad \infer{\forcerequire{\tau_1}{\tau_2}}{\required{\tau_2}\quad \tau_2 <: \tau_1}
+\end{array}\\
+\text{\textsc{TEnv-Union:}} \quad \Gamma_1 \cup \Gamma_2=\Gamma \text{ where } \Gamma(x)=
+\begin{cases}
+    \Gamma_1(x)\sqcap\Gamma_2(x) & \text{if } x \in \text{Domain}(\Gamma_1) \cap \text{Domain}(\Gamma_2)\\
+    \Gamma_1(x) & \text{if } x \in \text{Domain}(\Gamma_1) \\
+    \Gamma_2(x) & \text{if } x \in \text{Domain}(\Gamma_2) 
+\end{cases}
+\end{gathered}
+    \]
 \end{framed}
-\caption{Subtype relation and required-type rules (for the base language). Rule \textsc{Sub-Epsilon} declares the enum type $\epsilon$ to be a subtype of the integer type $\Z$, and \textsc{Sub-Refl} allows any type to be a subtype of itself. Rule \textsc{Req-Enum} tags $\epsilon$ as a required type (indicating that contexts expecting this type must enforce it), and \textsc{Force-Req} states that if $\tau_2$ is required and $\tau_2 <: \tau_1$, then $\tau_1$ can be forced to a required subtype $\tau_2$.}
+\caption{Subtype relation and required-type rules (for the base language). Rule \textsc{Sub-Epsilon} declares the enum type $\epsilon$ to be a subtype of the integer type $\Z$, and \textsc{Sub-Refl} allows any type to be a subtype of itself. Rule \textsc{Req-Enum} tags $\epsilon$ as a required type (indicating that contexts expecting this type must enforce it), and \textsc{Force-Req} states that if $\tau_2$ is required and $\tau_2 <: \tau_1$, then $\tau_1$ can be forced to a required subtype $\tau_2$. 
+Finally, \textsc{TEnv-Union} defines how to combine two type environments $\Gamma_1$ and $\Gamma_2$ into a new environment $\Gamma$, resolving conflicts by taking the more specific type when both environments define the same variable.}
 \label{fig:subtype-required-rules}
 \end{figure}
 
@@ -349,7 +361,7 @@ The type checking rules for expressions (without functions) are given in Figure~
 \text{\textsc{Check-ConstEnum:}} &\quad \infer{\checktype{\Gamma}{n}{\epsilon}{\emptyset}}{n \in V_\epsilon} \\
 \text{\textsc{Check-Subsumption:}} &\quad \infer{\checktype{\Gamma}{e}{\tau}{\Gamma_1}}{\checktype{\Gamma}{e}{\tau'}{\Gamma_1} \quad \tau' <: \tau} \\
 \text{\textsc{Check-BinOp:}} &\quad \infer{\checktype{\Gamma}{\binop{e_1}{e_2}}{\Z}{\Gamma_1 \cup \Gamma_2}}{\checktype{\Gamma}{e_1}{\Z}{\Gamma_1} \quad \checktype{\Gamma}{e_2}{\Z}{\Gamma_2}} \\
-\text{\textsc{Check-Ternary:}} &\quad \infer{\checktype{\Gamma}{\ternary{e_1}{e_2}{e_3}}{\tau}{\Gamma_1 \cup \Gamma_2 \cup \Gamma 3}}{
+\text{\textsc{Check-Ternary:}} &\quad \infer{\checktype{\Gamma}{\ternary{e_1}{e_2}{e_3}}{\tau}{\Gamma_1 \cup \Gamma_2 \cup \Gamma_3}}{
 \begin{array}{c}
 \checktype{\Gamma}{e_1}{\Z}{\Gamma_1} \quad
 \checktype{\Gamma}{e_2}{\tau}{\Gamma_2} \quad \checktype{\Gamma}{e_3}{\tau}{\Gamma_3}
@@ -358,7 +370,8 @@ The type checking rules for expressions (without functions) are given in Figure~
 \text{\textsc{Check-Let-Req:}} &\quad \infer{\checktype{\Gamma}{\lett{x}{\tau_1}{e_1}{e_2}}{\tau_2}{\Gamma_1 \cup \Gamma_2}}{
 \begin{array}{c}
 \required{\tau_1} \quad \requiretype{\Gamma}{e_1}{\tau_1}{\Gamma_1} \quad
-\checktype{\Gamma[x:\tau_1]}{e_2}{\tau_2}{\Gamma_2}
+\checktype{\Gamma[x:\tau_1]}{e_2}{\tau_2}{\Gamma_2}\\
+x \notin \text{Domain}(\Gamma_2) \text{ or } \tau_1 <: \Gamma_2(x)
 \end{array}
 } \\
 \text{\textsc{Check-Let-NoReq:}} &\quad \infer{\checktype{\Gamma}{\lett{x}{\tau_1}{e_1}{e_2}}{\tau_2}{\Gamma_1 \cup \Gamma_2}}{
@@ -390,7 +403,7 @@ The rules for requiring (asserting) specific types are given in Figure~\ref{fig:
 \text{\textsc{Require-ConstEnum:}} &\quad \infer{\requiretype{\Gamma}{n}{\epsilon}{\emptyset}}{n \in V_\epsilon} \\
 \text{\textsc{Require-Subsumption:}} &\quad \infer{\requiretype{\Gamma}{e}{\tau}{\Gamma_1}}{\checktype{\Gamma}{e}{\tau'}{\Gamma_1} \quad \tau' <: \tau} \\
 \text{\textsc{Require-Expr-NoReq:}} &\quad \infer{\requiretype{\Gamma}{e}{\tau}{\Gamma_1}}{\nrequired{\tau} \quad \checktype{\Gamma}{e}{\tau}{\Gamma_1}} \\
-\text{\textsc{Require-Ternary:}} &\quad \infer{\requiretype{\Gamma}{\ternary{e_1}{e_2}{e_3}}{\tau}{\Gamma_1}}{
+\text{\textsc{Require-Ternary:}} &\quad \infer{\requiretype{\Gamma}{\ternary{e_1}{e_2}{e_3}}{\tau}{\Gamma_1\cup \Gamma_2 \cup \Gamma_3}}{
 \begin{array}{c}
 \checktype{\Gamma}{e_1}{\Z}{\Gamma_1} \quad
 \requiretype{\Gamma}{e_2}{\tau}{\Gamma_2} \quad \requiretype{\Gamma}{e_3}{\tau}{\Gamma_3}
@@ -399,7 +412,8 @@ The rules for requiring (asserting) specific types are given in Figure~\ref{fig:
 \text{\textsc{Require-Let-Req:}} &\quad \infer{\requiretype{\Gamma}{\lett{x}{\tau_1}{e_1}{e_2}}{\tau_2}{\Gamma_1 \cup \Gamma_2}}{
 \begin{array}{c}
 \required{\tau_1} \quad \requiretype{\Gamma}{e_1}{\tau_1}{\Gamma_1} \quad
-\requiretype{\Gamma[x:\tau_1]}{e_2}{\tau_2}{\Gamma_2}
+\requiretype{\Gamma[x:\tau_1]}{e_2}{\tau_2}{\Gamma_2}\\
+x \notin \text{Domain}(\Gamma_2) \text{ or } \tau_1 <: \Gamma_2(x)
 \end{array}
 } \\
 \text{\textsc{Require-Let-NoReq:}} &\quad \infer{\requiretype{\Gamma}{\lett{x}{\tau_1}{e_1}{e_2}}{\tau_2}{\Gamma_1 \cup \Gamma_2}}{
@@ -460,7 +474,11 @@ The type checking rules for function abstractions and application are shown in F
 \centering
 \begin{framed}
 \begin{align*}
-\text{\textsc{Check-Lambda-Req:}} &\quad \infer{\checktype{\Gamma}{\funct{x}{\tau_1}{e}}{\arrowt{\tau_1}{\tau_2}}{\Gamma_1}}{\required{\tau_1} \quad \checktype{\Gamma[x:\tau_1]}{e}{\tau_2}{\Gamma_1}} \\
+\text{\textsc{Check-Lambda-Req:}} &\quad \infer{\checktype{\Gamma}{\funct{x}{\tau_1}{e}}{\arrowt{\tau_1}{\tau_2}}{\Gamma_1}}{
+\begin{array}{c}
+\required{\tau_1} \quad \checktype{\Gamma[x:\tau_1]}{e}{\tau_2}{\Gamma_1}\\
+x \notin \text{Domain}(\Gamma_1) \text{ or } \tau_1 <: \Gamma_1(x)
+\end{array}} \\
 \text{\textsc{Check-Lambda-NoReq:}} &\quad \infer{\checktype{\Gamma}{\funct{x}{\tau_1}{e}}{\arrowt{\tau_1}{\tau_2}}{\Gamma_1}}{
 \begin{array}{c}
 \nrequired{\tau_1} \quad
@@ -472,7 +490,7 @@ The type checking rules for function abstractions and application are shown in F
 \forcerequire{\tau}{\tau_1} \quad \checktype{\Gamma[x:\tau_1]}{e}{\tau_2}{\Gamma_1} \quad \Gamma_1(x) = \tau_1
 \end{array}
 } \\
-\text{\textsc{Check-Apply:}} &\quad \infer{\checktype{\Gamma}{\apply{e_1}{e_2}}{\tau_2}{\Gamma_1 \cup \Gamma_2}}{\requiretype{\Gamma}{e_1}{\arrowt{\tau_1}{\tau_2}}{\Gamma_1} \quad \requiretype{\Gamma}{e_2}{\tau_1}{\Gamma_2}}
+\text{\textsc{Check-Apply:}} &\quad \infer{\checktype{\Gamma}{\apply{e_1}{e_2}}{\tau_2}{\Gamma_1 \cup \Gamma_2}}{\checktype{\Gamma}{e_1}{\arrowt{\tau_1}{\tau_2}}{\Gamma_1} \quad \requiretype{\Gamma}{e_2}{\tau_1}{\Gamma_2}}
 \end{align*}
 \end{framed}
 \caption{Extended type checking rules to support first-class functions. The \textsc{Check-Lambda-*} rules handle type checking of lambda (anonymous function) expressions under three scenarios: when the parameter's type is required (\textsc{Check-Lambda-Req}), when the parameter has no special requirement (\textsc{Check-Lambda-NoReq}), and when a required subtype must be enforced for the parameter (\textsc{Check-Lambda-Force}). \textsc{Check-Apply} checks a function application by first ensuring the function expression has an arrow type and then requiring the argument expression to have the function's parameter type.}
@@ -486,7 +504,11 @@ Finally, the requirement rules for function-related expressions are given in Fig
 \centering
 \begin{framed}
 \begin{align*}
-\text{\textsc{Require-Lambda-Req:}} &\quad \infer{\requiretype{\Gamma}{\funct{x}{\tau_1}{e}}{\arrowt{\tau_1}{\tau_2}}{\Gamma_1}}{\required{\tau_1} \quad \requiretype{\Gamma[x:\tau_1]}{e}{\tau_2}{\Gamma_1}} \\
+\text{\textsc{Require-Lambda-Req:}} &\quad \infer{\requiretype{\Gamma}{\funct{x}{\tau_1}{e}}{\arrowt{\tau_1}{\tau_2}}{\Gamma_1}}{
+\begin{array}{c}
+\required{\tau_1} \quad \requiretype{\Gamma[x:\tau_1]}{e}{\tau_2}{\Gamma_1}\\
+x \notin \text{Domain}(\Gamma_1) \text{ or } \tau_1 <: \Gamma_1(x)
+\end{array}} \\
 \text{\textsc{Require-Lambda-NoReq:}} &\quad \infer{\requiretype{\Gamma}{\funct{x}{\tau_1}{e}}{\arrowt{\tau_1}{\tau_2}}{\Gamma_1}}{
 \begin{array}{c}
 \nrequired{\tau_1} \quad
@@ -500,7 +522,7 @@ Finally, the requirement rules for function-related expressions are given in Fig
 } \\
 \text{\textsc{Require-Apply:}} &\quad \infer{\requiretype{\Gamma}{\apply{e_1}{e_2}}{\tau_2}{\Gamma_2 \cup \Gamma_3}}{
 \begin{array}{c}
-\checktype{\Gamma}{e_1}{\arrowt{\tau_3}{\tau_4}}{\Gamma_1} \quad \tau_1 <: \tau_3 \\
+\checktype{\Gamma}{e_1}{\arrowt{\tau_1}{\tau_3}}{\Gamma_1} \quad \forcerequire{\tau_3}{\tau_2}\\
 \requiretype{\Gamma}{e_1}{\arrowt{\tau_1}{\tau_2}}{\Gamma_2} \quad \requiretype{\Gamma}{e_2}{\tau_1}{\Gamma_3}
 \end{array}
 }
@@ -520,9 +542,12 @@ Let $e$ be a well-typed C program, and let $e'$ be the program obtained by chang
 \begin{enumerate}
     \item If $check(\emptyset,\, e')$ succeeds (i.e., all the type-checking rules can be applied without failure on $e'$), it verifies that the enum type $\epsilon$ can be treated as a subtype of the integer type (meaning that $\epsilon$ can be safely translated as a Rust enum type).
     \item Suppose $\checktype{\emptyset}{e'}{\tau}{\Gamma_1}$ (the type checker infers type $\tau$ for $e'$ and produces environment $\Gamma_1$). If we then modify the declared type of every variable $x$ found in $\Gamma_1$ to $\Gamma_1(x)$ in the original program (producing a new program $e''$), then $e''$ is well-typed. In other words, after inferring the appropriate enum types via $\Gamma_1$, applying those types back to the program yields a consistent, type-correct program.
+    \item Only necessary changes are made to the program $e'$ to produce $e''$. In other words, reverting any change of type annotation in $e''$ as in $e'$ will result in a type error.
 \end{enumerate}
 
-We do not present a formal proof of these propositions here. Instead, we illustrate them with examples to show that the formal rules behave as intended.
+\begin{proof}
+    See Appendix.
+\end{proof}
 
 \subsection{Examples}
 We first consider a simple code fragment (assuming that $0 \in V_\epsilon$):
@@ -568,7 +593,7 @@ These examples illustrate that the formal rules correctly identify when a C enum
 \section{Conclusion}
 In this report, we presented an approach to enhance C2Rust's enum translation by introducing subtype inference. Our approach determines when a given C enum can be safely translated into a Rust enum and, if feasible, replaces the integer type alias with a proper Rust enum. By leveraging Rust's value safety and expressiveness for enums, the translation process produces output code that is more idiomatic and maintains type correctness.
 
-This approach offers several benefits. First, it improves the accuracy of the translation by inferring and enforcing the intended enum types, which leads to fewer type errors and a smoother migration from C to Rust. Second, by replacing opaque integer aliases with meaningful Rust enums, it enhances the readability and maintainability of the code. Developers can more easily understand the intent of the code when enums are used instead of generic integers.
+This approach offers several benefits. First, it improves the accuracy of the translation by inferring and enforcing the intended enum types, which leads to fewer type errors and a smoother migration from C to Rust. Second, by replacing opaque integer aliases with meaningful Rust enums, it enhances the readability and maintainability of the code. Developers can more easily understand the intent of the code when enums are used instead of generic integers. Finally, by eliminating the need for downcasting in the translated code, our approach reduces the reliance on unsafe Rust constructs, making the resulting code safer and more idiomatic.
 
 However, our approach in its current form relies on a strict static type analysis and may fail in certain cases that a human might still consider valid enum usage. For example, consider a common C idiom:
 
@@ -583,4 +608,264 @@ enum Day next_day(enum Day day) {
 \end{lstlisting}
 
 This code uses an enum to represent days of the week and calculates the next day. For a successful translation to a Rust enum, we would need to deduce that the return value of \texttt{next\_day} is always between 0 and 6 (i.e., a valid \texttt{Day}). However, the type system alone cannot guarantee this property, so our formal rules would not allow translating the return type of \texttt{next\_day} as an enum. Handling such cases would require additional analysis, such as range analysis or value constraint inference. Instead of automatically concluding that an expression involving arithmetic cannot correspond to an enum, the translator could attempt to deduce constraints on the expression's possible values and determine whether it stays within the valid range of an enum's variants. Incorporating such analysis could enable us to capture more cases where a C enum type can be translated to a Rust enum type.
+
+\appendix
+
+\newtheorem{lemma}{Lemma}
+\newtheorem{theorem}{Theorem}
+
+\section*{Preliminaries}
+
+We define the several notations and rules for the formal proof:
+
+\begin{itemize}
+    \item \textbf{Forcing rules:} The \textbf{Forcing Rules} are the set of rules that force a type to be a subtype of another type, including \textsc{Check-Lambda-Force}, \textsc{Require-Lambda-Force}, \textsc{Check-Let-Force}, and \textsc{Require-Let-Force}.
+    \item \textbf{Type kinds:} We say the types $\tau_1$ and $\tau_2$ are of the same kind, denoted as $\tau_1 \sim \tau_2$, by the following rules:
+    \[\tau\sim\tau\quad\infer{\tau_1\sim\tau_3}{\tau_1\sim\tau_2\quad\tau_2\sim\tau_3}\quad\infer{\tau_1\sim\tau_2}{\tau_2\sim\tau_1}\quad\infer{\tau_1\sim\tau_2}{\tau_1<:\tau_2}\quad\infer{\arrowt{\tau_1}{\tau_2}\;\sim\;\arrowt{\tau_3}{\tau_4}}{\tau_1\sim\tau_3\quad\tau_2\sim\tau_4}\]
+    \item \textbf{Type Environment kinds:} We say the type environments $\Gamma_1$ and $\Gamma_2$ are of the same kind, denoted as $\Gamma_1 \sim \Gamma_2$, if $\text{Domain}(\Gamma_1) = \text{Domain}(\Gamma_2)$ and for all $x \in \text{Domain}(\Gamma_1)$, $\Gamma_1(x) \sim \Gamma_2(x)$.
+    \item \textbf{Bounds:} We say the type $\tau=\tau_1 \sqcup \tau_2$ is the upper bound of a types $\tau_1$ and $\tau_2$ if $\tau_1 <: \tau$ and $\tau_2 <: \tau$. We say the type $\tau=\tau_1 \sqcap \tau_2$ is the lower bound of a types $\tau_1$ and $\tau_2$ if $\tau <: \tau_1$ and $\tau <: \tau_2$.
+    \item \textbf{Expression cases:} For the inductive steps, we name the cases of expressions as follows:
+    \begin{itemize}
+        \item \textsc{Let}: \lett{x}{\tau}{e}{e}
+        \item \textsc{Var}: $x$
+        \item \textsc{Const}: $n$
+        \item \textsc{BinOp}: \binop{e}{e}
+        \item \textsc{Ternary}: \ternary{e}{e}{e}
+        \item \textsc{Lambda}: \funct{x}{\tau}{e}
+        \item \textsc{Apply}: \apply{e}{e}
+    \end{itemize}
+
+    The base cases of the expression are \textsc{Var} and \textsc{Const}. Other cases are inductive.
+    \item \textbf{Type cases:} For the type, we name the cases as follows:
+    \begin{itemize}
+        \item \textsc{Epsilon}: $\epsilon$
+        \item \textsc{Integer}: $\Z$
+        \item \textsc{Arrow}: $\arrowt{\tau}{\tau}$
+    \end{itemize}
+
+    The base cases of the type are \textsc{Epsilon} and \textsc{Integer}. The \textsc{Arrow} type is inductive.
+    \item \textbf{Environments:} To avoid confusion, we call $\Gamma$ the \textbf{type environment} if it is used in the first argument of the $check$ or $require$ functions, and we call it the \textbf{associated type environment} if it is returned by the $check$ or $require$ functions.
+    \item \textbf{Applying an associated type environment:} We call the process of applying an associated type environment $\Gamma$ to an expression $e$ as \textbf{applying the environment} to $e$, and denote it as $\Gamma[e]$. This is the process on the proposition 2, where we apply the associated type environment $\Gamma_1$ to the expression $e'$ to produce a new expression $e''$(i.e., $e'' = \Gamma_1[e']$). Following is the formal definition of applying an associated type environment to an expression:
+    \begin{itemize}
+        \item \textsc{Var}: $\Gamma[x]$ is $x$.
+        \item \textsc{Const}: $\Gamma[n]$ is $n$.
+        \item \textsc{Let}: If $x\in \text{Domain}(\Gamma)$ and $\Gamma(x)<:\tau$, $\Gamma[\lett{x}{\tau}{e_1}{e_2}]$ is $\lett{x}{\Gamma(x)}{\Gamma[e_1]}{\Gamma[e_2]}$.
+
+        Otherwise, $\Gamma[\lett{x}{\tau}{e_1}{e_2}]$ is $\lett{x}{\tau}{\Gamma[e_1]}{\Gamma[e_2]}$.
+        \item \textsc{BinOp}: $\Gamma[\binop{e_1}{e_2}]$ is $\binop{\Gamma[e_1]}{\Gamma[e_2]}\quad$.
+        \item \textsc{Ternary}: $\Gamma[\ternary{e_1}{e_2}{e_3}]$ is $\ternary{\Gamma[e_1]}{\Gamma[e_2]}{\Gamma[e_3]}$.
+        \item \textsc{Lambda}: If $x\in \text{Domain}(\Gamma)$ and $\Gamma(x)<:\tau$, $\Gamma[\funct{x}{\tau}{e}]$ is $\funct{x}{\Gamma(x)}{\Gamma[e]}$.
+
+        Otherwise, $\Gamma[\funct{x}{\tau}{e}]$ is $\funct{x}{\tau}{\Gamma[e]}$.
+        \item \textsc{Apply}: $\Gamma[\apply{e_1}{e_2}]$ is $\apply{\Gamma[e_1]}{\Gamma[e_2]}$.
+    \end{itemize}
+    \item \textbf{Declaration on expression}: If an expression $e$ contains a subexpression \lett{x}{\tau}{e_1}{e_2} or $\funct{x}{\tau}{e}$, we say that $e$ has a \textbf{declaration} of $x$.
+\end{itemize}
+
+
+\section*{Properties}
+
+\begin{lemma}
+    \label{lem:bound}
+    If $\tau_1\sim\tau_2$, then $\tau_1\sqcup\tau_2$ and $\tau_1\sqcap\tau_2$ exists.
+\end{lemma}
+
+\begin{proof}
+    We use induction on the type $\tau_1$.
+
+    \textbf{Base Cases:}
+    \begin{itemize}
+        \item \textsc{Epsilon}: $\epsilon\sqcup\tau_2=\tau_2$ and $\epsilon\sqcap\tau_2=\epsilon$.
+        \item \textsc{Integer}: $\Z\sqcup\tau_2=\tau_2$ and $\Z\sqcap\tau_2=\Z$.
+    \end{itemize}
+
+    \textbf{Inductive Cases:}
+    \begin{itemize}
+        \item \textsc{Arrow}: By the inductive hypothesis, we have $\tau_1\sim\tau_3$ and $\tau_2\sim\tau_4$. Then, we have $(\arrowt{\tau_1}{\tau_2})\sqcup(\arrowt{\tau_3}{\tau_4})=\arrowt{(\tau_1\sqcap\tau_3)}{(\tau_2\sqcup\tau_4)}$ and $(\arrowt{\tau_1}{\tau_2})\sqcap(\arrowt{\tau_3}{\tau_4})=\arrowt{(\tau_1\sqcup\tau_3)}{(\tau_2\sqcap\tau_4)}$.
+    \end{itemize}
+
+    Therefore, we conclude that $\tau_1\sqcup\tau_2$ and $\tau_1\sqcap\tau_2$ always exist.
+\end{proof}
+
+\begin{lemma}
+    \label{lem:same-kind}
+    For all $\Gamma_1$, $\Gamma_2$ and $e$ where $\Gamma_1\sim\Gamma_2$, if $\checktype{\Gamma_1}{e}{\tau_1}{\Gamma_1'}$ and $\checktype{\Gamma_2}{e}{\tau_2}{\Gamma_2'}$, then $\tau_1\sim\tau_2$. Also, if $require(\Gamma,\,e,\,\tau_1)$ and $require(\Gamma,\,e,\,\tau_2)$ both succeed, then $\tau_1\sim\tau_2$.
+\end{lemma}
+
+\begin{proof}
+    Easy.
+\end{proof}
+
+\begin{lemma}
+    \label{lem:env-kind}
+    If $\Gamma_1\sim\Gamma_2$ and $\tau_1\sim\tau_2$, then $\Gamma_1[x:\tau_1]\sim\Gamma_2[x:\tau_2]$.
+\end{lemma}
+
+\begin{proof}
+    Easy.
+\end{proof}
+
+\begin{theorem}
+    \label{thm:assoc-iden}
+    For all $\Gamma_1$, $\Gamma_2$ and $e$ where $\Gamma_1\sim\Gamma_2$, suppose there exists a type $\tau$ where $require(\Gamma_1, e, \tau)$ and $require(\Gamma_2, e, \tau)$ both succeed with $\requiretype{\Gamma_1}{e}{\tau}{\Gamma_1'}$ and $\requiretype{\Gamma_2}{e}{\tau}{\Gamma_2'}$. Then, $\Gamma_1'=\Gamma_2'$. Also, if $check(\Gamma_1, e)$ and $check(\Gamma_2, e)$ both succeed with $\checktype{\Gamma_1}{e}{\tau_1}{\Gamma_1'}$ and $\checktype{\Gamma_2}{e}{\tau_2}{\Gamma_2'}$, then $\Gamma_1'=\Gamma_2'$.
+\end{theorem}
+
+\begin{proof}
+    We use induction on the expression $e$.
+
+    \textbf{Base Cases:}
+    \begin{itemize}
+        \item \textsc{Const} $n$: According to the rule \textsc{Require-ConstEnum}, \textsc{Check-ConstEnum} and \textsc{Check-ConstNonEnum}, the associated type environment is always $\emptyset$.
+        \item \textsc{Var} $x$: According to the rule \textsc{Require-Var-Env}, the associated type environment by $require$ is always $[x:\tau]$. The rule \textsc{Check-Var} always gives the empty environment $\emptyset$.
+    \end{itemize}
+
+    \textbf{Inductive Cases:}
+    \begin{itemize}
+        \item \textsc{Let} \lett{x}{\tau_1}{e_1}{e_2}: For $require$, we have 3 rules: \textsc{Require-Let-Req}, \textsc{Require-Let-NoReq}, and \textsc{Require-Let-Force}. All of them gets two associated type environments for $e_1$ and $e_2$, and gives a union of the two as the result. Therefore, it is sufficient to show that the two associated type environments are the same for $e_1$ and $e_2$.
+        \begin{itemize}
+            \item For $e_2$, all the rules use $require$ with the same kind of type environment, the same expression, and the same type. Therefore, by the induction hypothesis, we will have the same associated type environment.
+            \item For $e_1$, the given type environment is the same kind for all the rules. If $\tau_1$ is required, then $e$ will check the rule \textsc{Require-Let-Req}. If $\tau_1$ is not required, then $e$ will check the rule \textsc{Require-Let-NoReq} only if $x$ is not in the domain of the associated type environment of $e_2$. Otherwise, it will check the rule \textsc{Require-Let-Force}. Therefore, the rule which will be used for $require$ depends on the expression $e$, not the type environment $\Gamma_1$ or $\Gamma_2$. Using this fact, deriving $\Gamma_1'=\Gamma_2'$ is straightforward with the induction hypothesis.
+        \end{itemize}
+
+        In this case, $check$ is similar to $require$.
+        \item \textsc{BinOp} \binop{e_1}{e_2}: $require$ will not succeed if the type $\tau$ is required. Otherwise, $\checktype{\Gamma}{e}{\tau}{\Gamma'}\Rightarrow\requiretype{\Gamma}{e}{\tau}{\Gamma'}$ by the rule \textsc{Require-Expr-NoReq}. By the induction hypothesis and the rule \textsc{Check-BinOp}, we have $\Gamma_1'=\Gamma_2'$.
+        \item \textsc{Ternary}: By the induction hypothesis and the rules \textsc{Require-Ternary} and \textsc{Check-Ternary}, we have $\Gamma_1'=\Gamma_2'$.
+        \item \textsc{Lambda}: It's basically same as \textsc{Let} case without $e_1$, thus easier to prove.
+        \item \textsc{Apply} \apply{e_1}{e_2}: By the induction hypothesis and the rule \textsc{Check-Apply}, we have $\Gamma_1'=\Gamma_2'$ for $check$. For $require$:
+        \begin{itemize}
+            \item By inductive hypothesis, suppose $\checktype{\Gamma_1}{e_1}{\tau_1}{\Gamma_a}$ and $\checktype{\Gamma_2}{e_1}{\tau_2}{\Gamma_b}$.
+            \item By Lemma~\ref{lem:same-kind}, we have $\tau_1\sim\tau_2$.
+            \item By Lemma~\ref{lem:bound}, let $\tau=\tau_1\sqcup\tau_2$. 
+            \item In order to pass the rule \textsc{Require-Apply}, $\tau_1=\arrowt{\tau_{1a}}{\tau_{1b}}$, $\tau_2=\arrowt{\tau_{2a}}{\tau_{2b}}$, and $\forcerequire{\tau_{1a}}{\tau}$ and $\forcerequire{\tau_{2a}}{\tau}$.
+            \item Suppose $\tau_u=\arrowt{\tau_{ua}}{\tau_{ub}}$. Then, $\tau_{1b}<:\tau_{ub}$ and $\tau_{2b}<:\tau_{ub}$. Therefore, we conclude that $\forcerequire{\tau_{ub}}{\tau}$.
+            \item By the rule \textsc{Check-Subsumption}, we have $\checktype{\Gamma_1}{e_1}{\tau_u}{\Gamma_c}$ and $\checktype{\Gamma_2}{e_1}{\tau_u}{\Gamma_d}$.
+            \item Using $\tau_u$ in the rule \textsc{Require-Apply} and by the induction hypothesis, we have $\Gamma_1'=\Gamma_2'$.
+        \end{itemize}
+    \end{itemize}
+\end{proof}
+
+\begin{theorem}
+    \label{thm:check-well-typed}
+    For some $\tau$, if $check(\Gamma, e)$ or $require(\Gamma, e, \tau)$ succeeds without any \textbf{Forcing Rules} applied, then $e$ is well-typed under the type environment $\Gamma$.
+\end{theorem}
+
+\begin{proof}
+    Easy.
+\end{proof}
+
+\begin{lemma}
+    \label{lem:contains-declaration-or-tenv}
+    Suppose \checktype{\Gamma}{e}{\tau}{\Gamma'} or \requiretype{\Gamma}{e}{\tau}{\Gamma'}. For $x \in\domain{\Gamma'}$, either $e$ contains a declaration of $x$ or $x\in\domain{\Gamma}$.
+\end{lemma}
+
+\begin{proof}
+    Easy.
+\end{proof}
+
+\begin{lemma}
+    \label{lem:apply-iden}
+    If there's no such $x\in\domain{\Gamma_1}$ such that $e$ contains a declaration of $x$, then $\Gamma_2[e]=(\Gamma_1\cup\Gamma_2)[e]$ for all $\Gamma_1$, $\Gamma_2$ and $e$.
+\end{lemma}
+
+\begin{theorem}
+    \label{thm:check-apply}
+    If $\checktype{\Gamma}{e}{\tau}{\Gamma'}$, then $check(\Gamma,\,\Gamma'[e])$ produces the same result(both type and associated type environment) without any \textbf{Forcing Rules} applied. Also, if $\requiretype{\Gamma}{e}{\tau}{\Gamma'}$, then $require(\Gamma,\,\Gamma'[e], \tau)$ produces the same result without any \textbf{Forcing Rules} applied.
+\end{theorem}
+
+\begin{proof}
+    We use induction on the expression $e$.
+
+    \textbf{Base Cases:} Easy.
+
+    \textbf{Inductive Cases:}
+    \begin{itemize}
+        \item \textsc{BinOp} \binop{e_1}{e_2}: No $require$ rule for this case, so we only consider $check$.
+        \begin{itemize}
+            \item By the rule \textsc{Check-BinOp}, we have $\checktype{\Gamma}{e_1}{\Z}{\Gamma_1}$ and $\checktype{\Gamma}{e_2}{\Z}{\Gamma_2}$.
+            \item If $e_1$ has a declaration of $x$, then we get $x\notin\domain{\Gamma}$ by Lemma~\ref{lem:contains-declaration-or-tenv}. Also, by the no-naming-collision assumption, $e_2$ does not have a declaration of $x$. 
+            \item By Lemma~\ref{lem:contains-declaration-or-tenv}, we have $x\notin\domain{\Gamma_2}$. Therefore, by Lemma~\ref{lem:apply-iden}, we have $\Gamma_1[e_1]=(\Gamma_1\cup\Gamma_2)[e_1]$. 
+            \item In the same way, we have $\Gamma_2[e_2]=(\Gamma_1\cup\Gamma_2)[e_2]$.
+            \item By inductive hypothesis, we have $\checktype{\Gamma}{\Gamma_1[e_1]}{\Z}{\Gamma_1}$ and $\checktype{\Gamma}{\Gamma_2[e_2]}{\Z}{\Gamma_2}$.
+            \item Using the fact that $\Gamma_1[e_1]=(\Gamma_1\cup\Gamma_2)[e_1]$ and $\Gamma_2[e_2]=(\Gamma_1\cup\Gamma_2)[e_2]$, we have $\checktype{\Gamma}{\Gamma'[e]}{\Z}{\Gamma'}$.
+        \end{itemize}
+        \item \textsc{Ternary}: Both $require$ and $check$ cases are similar to \textsc{BinOp} case.
+        \item \textsc{Apply}: Similar to \textsc{Ternary} case.
+        \item \textsc{Let} \lett{x}{\tau_1}{e_1}{e_2}: 
+        First of all, in the same way as in the \textsc{BinOp} case, we can show that $\Gamma_1[e_1]=(\Gamma_1\cup\Gamma_2)[e_1]$ and $\Gamma_2[e_2]=(\Gamma_1\cup\Gamma_2)[e_2]$. 
+        
+        For $require$, we have 3 rules: \textsc{Require-Let-Req}, \textsc{Require-Let-NoReq}, and \textsc{Require-Let-Force}. Our objective is to show that $require(\Gamma,\,\Gamma'[e],\,\tau)$ passes either \textsc{Require-Let-Req} or \textsc{Require-Let-NoReq}.
+        
+        We consider the following cases of which rule is used for $require(\Gamma,\,e,\,\tau)$:
+        \begin{itemize}
+            \item \textsc{Require-Let-Req}: If $e$ passed this rule, then type annotation of $x$(which is $\tau_1$) is unchanged in $\Gamma'[e]$. Therefore, the statement holds by the inductive hypothesis.
+            \item \textsc{Require-Let-NoReq}: If $e$ passed this rule, then type annotation of $x$(which is $\tau_1$) is unchanged in $\Gamma'[e]$. Therefore, the statement holds by the inductive hypothesis.
+            \item \textsc{Require-Let-Force}: Suppose $e$ passed this rule by forcing the type $\tau_1$ to be $\tau'$. Then, for the associated type environment $\Gamma_2$ produced by $require(\Gamma[x:\tau'],\,e_2,\,\tau)$, we have $\Gamma_2(x)=\tau'$. The type annotation of $x$ in $\Gamma'[e]$ is $\tau'$, so $require(\Gamma,\,\Gamma'[e],\,\tau)$ now passes the rule \textsc{Require-Let-Req} since $\required{\tau'}$, \requiretype{\Gamma}{\Gamma_1[e_1]}{\tau'}{\Gamma_1} and \requiretype{\Gamma[x:\tau']}{\Gamma_2[e_2]}{\tau}{\Gamma_2}(by inductive hypothesis).
+        \end{itemize}
+
+        Therefore, we conclude that $require(\Gamma,\,\Gamma'[e],\,\tau)$ passes either \textsc{Require-Let-Req} or \textsc{Require-Let-NoReq}, and $\requiretype{\Gamma}{\Gamma'[e]}{\tau}{\Gamma'}$.
+
+        For $check$, we can show that $check(\Gamma,\,\Gamma'[e])$ doesn't pass any \textbf{Forcing Rules}, and $\checktype{\Gamma}{\Gamma'[e]}{\tau}{\Gamma'}$ in the same way as above.
+        \item \textsc{Lambda}: Easier than \textsc{Let} case.
+    \end{itemize}
+\end{proof}
+
+\begin{lemma}
+    \label{lem:required}
+    The associated type environment $\Gamma$ produced by $check$ or $require$ can only have the required types. i.e., for all $x\in\domain{\Gamma}$, $\required{\Gamma(x)}$.
+\end{lemma}
+
+\begin{proof}
+    Easy.
+\end{proof}
+
+\begin{theorem}
+    \label{thm:check-apply-force}
+    If $\checktype{\Gamma}{e}{\tau}{\Gamma'}$, and for any $\Gamma''\subset\Gamma'$ where $\Gamma''[e]\neq\Gamma'[e]$, $check(\Gamma,\,\Gamma''[e])$ produces the same result, but still uses \textbf{Forcing Rules}. Also, if $\requiretype{\Gamma}{e}{\tau}{\Gamma'}$, and for any $\Gamma''\subset\Gamma'$ where $\Gamma''[e]\neq\Gamma'[e]$, $require(\Gamma,\,\Gamma''[e], \tau)$ produces the same result, but still uses \textbf{Forcing Rules}.
+\end{theorem}
+
+\begin{proof}
+    Similar induction as in Theorem~\ref{thm:check-apply}.
+
+    \textbf{Base Cases:} Can't happen since $e=\Gamma'[e]=\Gamma''[e]$. Therefore, we only consider the inductive cases.
+
+    \textbf{Inductive Cases:}
+    \begin{itemize}
+        \item \textsc{BinOp} \binop{e_1}{e_2}: By the assumption, we have $\Gamma''[e_1]\neq\Gamma'[e_1]$ or $\Gamma''[e_2]\neq\Gamma'[e_2]$. We use inductive hypothesis on the subexpression where the difference occurs. Therefore, we conclude that $check(\Gamma,\,\Gamma''[e])$ or $require(\Gamma,\,\Gamma''[e], \tau)$ uses \textbf{Forcing Rules}. Also, by using inductive hypothesis and Theorem~\ref{thm:check-apply}, we have $\checktype{\Gamma}{\Gamma''[e]}{\tau}{\Gamma'}$ or $\requiretype{\Gamma}{\Gamma''[e]}{\tau}{\Gamma'}$, therefore the same result is produced.
+        \item \textsc{Ternary}: Similar to \textsc{BinOp} case.
+        \item \textsc{Apply}: Similar to \textsc{Ternary} case.
+        \item \textsc{Let} \lett{x}{\tau_1}{e_1}{e_2}: For $require$,
+        \begin{itemize}
+            \item \textbf{Case 1:} $\Gamma'[e]$ and $\Gamma''[e]$ has different type annotation for $x$. i.e., $x\in\domain{\Gamma'}\setminus\domain{\Gamma''}$, and $\Gamma'(x) <: \tau_1$.
+
+            Since $\Gamma'[e]$ changed the type annotation on $x$. According to the \textsc{Let} case in the proof of Theorem~\ref{thm:check-apply}, $require(\Gamma,\,e,\,\tau)$ passes the rule \textsc{Require-Let-Force}. Suppose the type of $x$ has been forced to $\tau'$. This indicates \requiretype{\Gamma[x:\tau']}{e_2}{\tau}{\Gamma_2} for some $\Gamma_2$ and $\Gamma_2(x)=\tau'$.
+            Assume $require(\Gamma,\,\Gamma''[e],\,\tau)$ passes the rule:
+            \begin{itemize}
+                \item \textsc{Require-Let-Req}: 
+                \begin{itemize}
+                    \item By Theorem~\ref{thm:assoc-iden}, we have $require(\Gamma[x:\tau_1],\,e_2,\,\tau)=\Gamma_2$ since $\Gamma[x:\tau']\sim\Gamma[x:\tau_1]$.
+                    \item By the inductive hypothesis and Theorem~\ref{thm:check-apply}, we have $\requiretype{\Gamma[x:\tau_1]}{\Gamma_2[e_2]}{\tau}{\Gamma_2}$.
+                    \item In the same way as above, we also have $\requiretype{\Gamma[x:\tau_1]}{\Gamma''[e_2]}{\tau}{\Gamma_2}$.
+                    \item Therefore, the rule \textsc{Require-Let-Req} fails, which is a contradiction.
+                \end{itemize}
+                \item \textsc{Require-Let-NoReq}: In the same way as above, we get a contradiction on $x\notin\domain{\Gamma_2}$.
+                \item \textsc{Require-Let-Force}: This implies that $require(\Gamma,\,\Gamma''[e],\,\tau)$ passes the \textbf{Forcing Rules}. It can be shown that $require(\Gamma,\,\Gamma''[e],\,\tau)$ produces the same result as $require(\Gamma,\,\Gamma'[e],\,\tau)$ by the inductive hypothesis, and the Theorem~\ref{thm:check-apply}.
+            \end{itemize}
+            \item \textbf{Case 2:} $\Gamma'[e]$ and $\Gamma''[e]$ has the same type annotation for $x$: similar to the \textsc{BinOp} case.
+        \end{itemize}
+        \item \textsc{Lambda}: Similar to \textsc{Let} case.
+    \end{itemize}
+\end{proof}
+
+\section*{Proof of Propositions}
+
+\begin{proof}
+
+Proving each propositions are straightforward using the above theorems.
+\begin{enumerate}
+    \item By the proposition 2.
+    \item Case where $\Gamma=\emptyset$ in the Theorem~\ref{thm:check-well-typed} and use Theorem~\ref{thm:check-apply}.
+    \item Case where $\Gamma=\emptyset$ in the Theorem~\ref{thm:check-apply-force}.
+\end{enumerate}
+\end{proof}
+
 \end{document}

@@ -14,11 +14,9 @@
 \usepackage{simplebnf}
 \usepackage[margin=0.75in]{geometry}
 \usepackage{framed}
-\usepackage{kotex}
 
 \setlength{\jot}{6pt}
 
-% ----------- Listings setup (kept from template) --------------
 \definecolor{codegray}{rgb}{0.5,0.5,0.5}
 \definecolor{codegreen}{rgb}{0,0.6,0}
 \definecolor{codepurple}{rgb}{0.58,0,0.82}
@@ -39,7 +37,7 @@ await, dyn},
   morecomment=[s]{/*}{*/},
   commentstyle=\color{codegreen}\ttfamily,
   stringstyle=\color{codepurple}\ttfamily,
-  morestring=[b]", 
+  morestring=[b]",
   morestring=[b]'
 }
 
@@ -64,14 +62,13 @@ await, dyn},
 
 \lstset{style=mystyle}
 
-% ---------- Custom commands (kept) -----------------
 \newcommand{\Z}{\ensuremath{\mathbb{Z}}}
 \newcommand{\lete}[3]{\ensuremath{\mathsf{let}\ #1\ \mathsf{=}\ #2\ \mathsf{in}\ #3}}
-\newcommand{\lett}[4]{\ensuremath{\mathsf{let}\ #1\mathsf{:},#2\ \mathsf{=}\ #3\ \mathsf{in}\ #4}}
+\newcommand{\lett}[4]{\ensuremath{\mathsf{let}\ #1\mathsf{:}\,#2\ \mathsf{=}\ #3\ \mathsf{in}\ #4}}
 \newcommand{\binop}[2]{\ensuremath{#1\ \mathsf{\oplus}\ #2}}
 \newcommand{\ternary}[3]{\ensuremath{\mathsf{if0}\ #1\ \mathsf{then}\ #2\ \mathsf{else}\ #3}}
 \newcommand{\func}[2]{\ensuremath{\lambda #1.#2}}
-\newcommand{\funct}[3]{\ensuremath{\lambda #1\mathsf{:},#2.#3}}
+\newcommand{\funct}[3]{\ensuremath{\lambda #1\mathsf{:}\,#2.#3}}
 \newcommand{\apply}[2]{\ensuremath{#1\ #2}}
 \newcommand{\raw}[1]{\ensuremath{#1\mathsf{.raw}}}
 \newcommand{\arrowt}[2]{\ensuremath{{#1}\rightarrow{#2}}}
@@ -81,43 +78,33 @@ await, dyn},
 \newcommand{\nrequired}[1]{\ensuremath{#1\text{ is not required}}}
 \newcommand{\forcerequire}[2]{\ensuremath{#1\Rightarrow#2}}
 
-% ---------- Theorem setup -----------------
-\theoremstyle{plain}
-\newtheorem{theorem}{Theorem}
-\newtheorem{prop}{Proposition}
-\newtheorem{lemma}{Lemma}
-\newtheorem{corollary}{Corollary}
-
 \begin{document}
 
-\title{Proving Subtype Inference}
-\author{Minwook~Lee\\ryan-lee@kaist.ac.kr}
+\title{Enhancing Subtype Inference by Tracking Value Constriants}
+
+\author{
+    \IEEEauthorblockN{Minwook Lee}
+    \IEEEauthorblockA{ryan-lee@kaist.ac.kr}
+}
+
 \maketitle
 
-\section{Preliminaries}
-We work with the type system, subtyping relation, and \texttt{check}/\texttt{require} rules introduced in the report.
-Following are some definitions needed for the proofs.
+\section{Introduction}
+% 이 보고서는 subtype inference 보고서에서 다루었던 내용을 확장하여, 정수 변수에 대한 값 제약을 추적하는 방법을 제안합니다. 이는 unsafe Rust를 사용하는 리스크가 있지만 Rust enum으로 변환하는 coverage를 더욱 확장할 수 있습니다. 
+This report extends the work on subtype inference by introducing a method to track value constraints on integer variables. This approach, while potentially risky due to the use of unsafe Rust, allows for a broader coverage of cases where C enums can be translated into Rust enums.
 
-\begin{itemize}
-    \item \textbf{Forcing rules:} The set of rules that force a type to be a subtype of another type, including \textsc{Check-Lambda-Force}, \textsc{Require-Lambda-Force}, \textsc{Check-Let-Force}, and \textsc{Require-Let-Force}.
-\end{itemize}
+% 다음과 같은 예시 코드를 봅시다:
+\begin{lstlisting}[language=C]
+enum Day {
+    Mon, Tue, Wed, Thu, Fri, Sat, Sun
+};
 
-\section{Theorems}
+enum Day next_day(enum Day day) {
+    return (day + 1) % 7;
+}
+\end{lstlisting}
 
-\begin{theorem}
-    Suppose $check(\emptyset,\,e')$ succeeds. For any variable or a parameter $x$ that has been declared with a type $\tau$, the run-time value of $x$ is guaranteed to have a type $\tau$.
-\end{theorem}
-
-\begin{theorem}
-    If $check(\emptyset,\,e')$ succeeds, $check(\emptyset,\,e'')$ succeeds without passing any forcing rules.
-\end{theorem}
-
-\begin{corollary}
-    If $check(\emptyset,\,e')$ succeeds, then $e''$ is well-typed.
-\end{corollary}
-
-\section{Proofs of Propositions}
-
-
+% 이 코드는 C enum을 사용하여 요일을 나타내고, 다음 요일을 반환하는 함수를 정의합니다. 이 함수는 입력으로 받은 요일에 1을 더하고 7로 나눈 나머지를 반환합니다. enum Day는 0부터 6까지의 값을 가지며, 함수의 return expression 또한 0부터 6까지의 값을 가집니다. 따라서 enum Day 타입의 변수는 항상 정의된 variants 값을 가집니다.
+This code defines a C enum to represent days of the week and a function that returns the next day. The function takes an input day, adds 1, and returns the result modulo 7. The \texttt{Day} has values ranging from 0 to 6, and the return expression of the function also produces values within this range. Thus, a variable of type \texttt{Day} will always have a defined variant.
 
 \end{document}
