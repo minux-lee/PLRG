@@ -753,6 +753,15 @@ We define the several notations and rules for the formal proof:
     Easy.
 \end{proof}
 
+\begin{theorem}
+    \label{thm:check-ill-typed}
+    For some $\tau$, if $check(\Gamma, e)$ or $require(\Gamma, e, \tau)$ succeeds with some \textbf{Forcing Rules} applied, then $e$ is not well-typed under the type environment $\Gamma$.
+\end{theorem}
+
+\begin{proof}
+    Easy.
+\end{proof}
+
 \begin{lemma}
     \label{lem:contains-declaration-or-tenv}
     Suppose \checktype{\Gamma}{e}{\tau}{\Gamma'} or \requiretype{\Gamma}{e}{\tau}{\Gamma'}. For $x \in\domain{\Gamma'}$, either $e$ contains a declaration of $x$ or $x\in\domain{\Gamma}$.
@@ -863,8 +872,8 @@ We define the several notations and rules for the formal proof:
 Proving each propositions are straightforward using the above theorems.
 \begin{enumerate}
     \item By the proposition 2.
-    \item Case where $\Gamma=\emptyset$ in the Theorem~\ref{thm:check-well-typed} and use Theorem~\ref{thm:check-apply}.
-    \item Case where $\Gamma=\emptyset$ in the Theorem~\ref{thm:check-apply-force}.
+    \item Case where $\Gamma=\emptyset$ in the Theorem~\ref{thm:check-apply} and use Theorem~\ref{thm:check-well-typed}.
+    \item Case where $\Gamma=\emptyset$ in the Theorem~\ref{thm:check-apply-force} and use Theorem~\ref{thm:check-ill-typed}.
 \end{enumerate}
 \end{proof}
 
