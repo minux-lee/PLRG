@@ -690,15 +690,6 @@ We define the several notations and rules for the formal proof:
 \end{proof}
 
 \begin{lemma}
-    \label{lem:same-kind}
-    For all $\Gamma_1$, $\Gamma_2$ and $e$ where $\Gamma_1\sim\Gamma_2$, if $\checktype{\Gamma_1}{e}{\tau_1}{\Gamma_1'}$ and $\checktype{\Gamma_2}{e}{\tau_2}{\Gamma_2'}$, then $\tau_1\sim\tau_2$. Also, if $require(\Gamma,\,e,\,\tau_1)$ and $require(\Gamma,\,e,\,\tau_2)$ both succeed, then $\tau_1\sim\tau_2$.
-\end{lemma}
-
-\begin{proof}
-    Easy.
-\end{proof}
-
-\begin{lemma}
     \label{lem:env-kind}
     If $\Gamma_1\sim\Gamma_2$ and $\tau_1\sim\tau_2$, then $\Gamma_1[x:\tau_1]\sim\Gamma_2[x:\tau_2]$.
 \end{lemma}
@@ -706,6 +697,17 @@ We define the several notations and rules for the formal proof:
 \begin{proof}
     Easy.
 \end{proof}
+
+\begin{lemma}
+    \label{lem:same-kind}
+    For all $\Gamma_1$, $\Gamma_2$ and $e$ where $\Gamma_1\sim\Gamma_2$, if $\checktype{\Gamma_1}{e}{\tau_1}{\Gamma_1'}$ and $\checktype{\Gamma_2}{e}{\tau_2}{\Gamma_2'}$, then $\tau_1\sim\tau_2$. Also, if $require(\Gamma,\,e,\,\tau_1)$ and $require(\Gamma,\,e,\,\tau_2)$ both succeed, then $\tau_1\sim\tau_2$.
+\end{lemma}
+
+\begin{proof}
+
+Easy.
+\end{proof}
+
 
 \begin{theorem}
     \label{thm:assoc-iden}
@@ -836,7 +838,7 @@ We define the several notations and rules for the formal proof:
 
 \begin{theorem}
     \label{thm:check-apply-force}
-    If $\checktype{\Gamma}{e}{\tau}{\Gamma'}$, and for any $\Gamma''\subset\Gamma'$ where $\Gamma''[e]\neq\Gamma'[e]$, $check(\Gamma,\,\Gamma''[e])$ produces the same result, but still uses \textbf{Forcing Rules}. Also, if $\requiretype{\Gamma}{e}{\tau}{\Gamma'}$, and for any $\Gamma''\subset\Gamma'$ where $\Gamma''[e]\neq\Gamma'[e]$, $require(\Gamma,\,\Gamma''[e], \tau)$ produces the same result, but still uses \textbf{Forcing Rules}.
+    If $\checktype{\Gamma}{e}{\tau}{\Gamma'}$, and for any $\Gamma''\subset\Gamma'$ such that $\Gamma''[e]\neq\Gamma'[e]$, $check(\Gamma,\,\Gamma''[e])$ produces the same result, but still uses \textbf{Forcing Rules}. Also, if $\requiretype{\Gamma}{e}{\tau}{\Gamma'}$, and for any $\Gamma''\subset\Gamma'$ such that $\Gamma''[e]\neq\Gamma'[e]$, $require(\Gamma,\,\Gamma''[e], \tau)$ produces the same result, but still uses \textbf{Forcing Rules}.
 \end{theorem}
 
 \begin{proof}
