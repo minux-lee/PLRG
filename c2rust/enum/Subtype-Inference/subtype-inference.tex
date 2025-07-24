@@ -399,7 +399,7 @@ The rules for requiring (asserting) specific types are given in Figure~\ref{fig:
 \centering
 \begin{framed}
 \begin{align*}
-\text{\textsc{Require-Var-Env:}} &\quad \infer{\requiretype{\Gamma}{x}{\tau}{[x:\tau]}}{\Gamma(x) = \tau' \quad \tau <: \tau'} \\
+\text{\textsc{Require-Var-Env:}} &\quad \requiretype{\Gamma}{x}{\tau}{[x:\tau]} \\
 \text{\textsc{Require-ConstEnum:}} &\quad \infer{\requiretype{\Gamma}{n}{\epsilon}{\emptyset}}{n \in V_\epsilon} \\
 \text{\textsc{Require-Subsumption:}} &\quad \infer{\requiretype{\Gamma}{e}{\tau}{\Gamma_1}}{\checktype{\Gamma}{e}{\tau'}{\Gamma_1} \quad \tau' <: \tau} \\
 \text{\textsc{Require-Expr-NoReq:}} &\quad \infer{\requiretype{\Gamma}{e}{\tau}{\Gamma_1}}{\nrequired{\tau} \quad \checktype{\Gamma}{e}{\tau}{\Gamma_1}} \\
