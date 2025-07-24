@@ -776,8 +776,12 @@ We define the several notations and rules for the formal proof:
 
 \begin{lemma}
     \label{lem:apply-iden}
-    If there's no such $x\in\domain{\Gamma_1}$ such that $e$ contains a declaration of $x$, then $\Gamma_2[e]=(\Gamma_1\cup\Gamma_2)[e]$ for all $\Gamma_1$, $\Gamma_2$ and $e$.
+    If there's no such $x\in\domain{\Gamma_1}$ such that $e$ contains a declaration of $x$, then $\Gamma_2[e]=(\Gamma_1\cup\Gamma_2)[e]$ for all $\Gamma_1$.
 \end{lemma}
+
+\begin{proof}
+    Easy.
+\end{proof}
 
 \begin{theorem}
     \label{thm:check-apply}
