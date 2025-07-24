@@ -733,16 +733,17 @@ We define the several notations and rules for the formal proof:
         \item \textsc{BinOp} \binop{e_1}{e_2}: $require$ will not succeed if the type $\tau$ is required. Otherwise, $\checktype{\Gamma}{e}{\tau}{\Gamma'}\Rightarrow\requiretype{\Gamma}{e}{\tau}{\Gamma'}$ by the rule \textsc{Require-Expr-NoReq}. By the induction hypothesis and the rule \textsc{Check-BinOp}, we have $\Gamma_1'=\Gamma_2'$.
         \item \textsc{Ternary}: By the induction hypothesis and the rules \textsc{Require-Ternary} and \textsc{Check-Ternary}, we have $\Gamma_1'=\Gamma_2'$.
         \item \textsc{Lambda}: It's basically same as \textsc{Let} case without $e_1$, thus easier to prove.
-        \item \textsc{Apply} \apply{e_1}{e_2}: By the induction hypothesis and the rule \textsc{Check-Apply}, we have $\Gamma_1'=\Gamma_2'$ for $check$. For $require$:
+        \item \textsc{Apply} \apply{e_1}{e_2}: For $require$:
         \begin{itemize}
             \item By inductive hypothesis, suppose $\checktype{\Gamma_1}{e_1}{\tau_1}{\Gamma_a}$ and $\checktype{\Gamma_2}{e_1}{\tau_2}{\Gamma_b}$.
             \item By Lemma~\ref{lem:same-kind}, we have $\tau_1\sim\tau_2$.
-            \item By Lemma~\ref{lem:bound}, let $\tau=\tau_1\sqcup\tau_2$. 
-            \item In order to pass the rule \textsc{Require-Apply}, $\tau_1=\arrowt{\tau_{1a}}{\tau_{1b}}$, $\tau_2=\arrowt{\tau_{2a}}{\tau_{2b}}$, and $\forcerequire{\tau_{1a}}{\tau}$ and $\forcerequire{\tau_{2a}}{\tau}$.
-            \item Suppose $\tau_u=\arrowt{\tau_{ua}}{\tau_{ub}}$. Then, $\tau_{1b}<:\tau_{ub}$ and $\tau_{2b}<:\tau_{ub}$. Therefore, we conclude that $\forcerequire{\tau_{ub}}{\tau}$.
+            \item By Lemma~\ref{lem:bound}, let $\tau_u=\tau_1\sqcup\tau_2$. 
+            \item In order to pass the rule \textsc{Require-Apply}, $\tau_1=\arrowt{\tau_{1a}}{\tau_{1b}}$, $\tau_2=\arrowt{\tau_{2a}}{\tau_{2b}}$, and $\forcerequire{\tau_{1b}}{\tau}$ and $\forcerequire{\tau_{2b}}{\tau}$.
+            \item Suppose $\tau_u=\arrowt{\tau_{ua}}{\tau_{ub}}$. Then, $\tau_{ub}=\tau_{1b}\sqcup\tau_{2b}$. Therefore, we conclude that $\forcerequire{\tau_{ub}}{\tau}$.
             \item By the rule \textsc{Check-Subsumption}, we have $\checktype{\Gamma_1}{e_1}{\tau_u}{\Gamma_c}$ and $\checktype{\Gamma_2}{e_1}{\tau_u}{\Gamma_d}$.
             \item Using $\tau_u$ in the rule \textsc{Require-Apply} and by the induction hypothesis, we have $\Gamma_1'=\Gamma_2'$.
         \end{itemize}
+        $check$ is easier than $require$ because it does not have type forcing.
     \end{itemize}
 \end{proof}
 
