@@ -623,7 +623,7 @@ We define the several notations and rules for the formal proof:
     \item \textbf{Type kinds:} We say the types $\tau_1$ and $\tau_2$ are of the same kind, denoted as $\tau_1 \sim \tau_2$, by the following rules:
     \[\tau\sim\tau\quad\infer{\tau_1\sim\tau_3}{\tau_1\sim\tau_2\quad\tau_2\sim\tau_3}\quad\infer{\tau_1\sim\tau_2}{\tau_2\sim\tau_1}\quad\infer{\tau_1\sim\tau_2}{\tau_1<:\tau_2}\quad\infer{\arrowt{\tau_1}{\tau_2}\;\sim\;\arrowt{\tau_3}{\tau_4}}{\tau_1\sim\tau_3\quad\tau_2\sim\tau_4}\]
     \item \textbf{Type Environment kinds:} We say the type environments $\Gamma_1$ and $\Gamma_2$ are of the same kind, denoted as $\Gamma_1 \sim \Gamma_2$, if $\text{Domain}(\Gamma_1) = \text{Domain}(\Gamma_2)$ and for all $x \in \text{Domain}(\Gamma_1)$, $\Gamma_1(x) \sim \Gamma_2(x)$.
-    \item \textbf{Bounds:} We say the type $\tau=\tau_1 \sqcup \tau_2$ is the upper bound of a types $\tau_1$ and $\tau_2$ if $\tau_1 <: \tau$ and $\tau_2 <: \tau$. We say the type $\tau=\tau_1 \sqcap \tau_2$ is the lower bound of a types $\tau_1$ and $\tau_2$ if $\tau <: \tau_1$ and $\tau <: \tau_2$.
+    \item \textbf{Bounds:} We say the type $\tau$ is the upper bound of a types $\tau_1$ and $\tau_2$ if $\tau_1 <: \tau$ and $\tau_2 <: \tau$. We define the least upper bound of two types $\tau_1$ and $\tau_2$ as $\tau_1 \sqcup \tau_2$, i.e., for all upper bounds $\tau$ of $\tau_1$ and $\tau_2$, $\tau_1 \sqcup \tau_2 <: \tau$. Similarly, we define the greatest lower bound of two types $\tau_1$ and $\tau_2$ as $\tau_1 \sqcap \tau_2$, i.e., for all lower bounds $\tau$ of $\tau_1$ and $\tau_2$, $\tau \sqcap \tau_2 <: \tau$.
     \item \textbf{Expression cases:} For the inductive steps, we name the cases of expressions as follows:
     \begin{itemize}
         \item \textsc{Let}: \lett{x}{\tau}{e}{e}
@@ -681,7 +681,9 @@ We define the several notations and rules for the formal proof:
 
     \textbf{Inductive Cases:}
     \begin{itemize}
-        \item \textsc{Arrow}: By the inductive hypothesis, we have $\tau_1\sim\tau_3$ and $\tau_2\sim\tau_4$. Then, we have $(\arrowt{\tau_1}{\tau_2})\sqcup(\arrowt{\tau_3}{\tau_4})=\arrowt{(\tau_1\sqcap\tau_3)}{(\tau_2\sqcup\tau_4)}$ and $(\arrowt{\tau_1}{\tau_2})\sqcap(\arrowt{\tau_3}{\tau_4})=\arrowt{(\tau_1\sqcup\tau_3)}{(\tau_2\sqcap\tau_4)}$.
+        \item \textsc{Arrow} $\tau_1=\arrowt{\tau_a}{\tau_b}$ and $\tau_2=\arrowt{\tau_c}{\tau_d}$: By the inductive hypothesis, we have $\tau_a\sim\tau_c$ and $\tau_b\sim\tau_d$. Then, we have an upper bound $\tau_u=\arrowt{(\tau_a\sqcap\tau_c)}{(\tau_b\sqcup\tau_d)}$ and a lower bound $\tau_l=\arrowt{(\tau_a\sqcup\tau_c)}{(\tau_b\sqcap\tau_d)}$.
+        
+        Suppose $\tau_u'=\arrowt{\tau_{u_a}}{\tau_{u_b}}$ is an upper bound of $\tau_1$ and $\tau_2$, then we have $\tau_{u_a} <: \tau_a$, $\tau_{u_a} <: \tau_c$, $\tau_b <: \tau_{u_b}$ and $\tau_d <: \tau_{u_b}$. Therefore, we have $\tau_{u_a} <: \tau_a\sqcap\tau_c$ and $\tau_b\sqcup\tau_d <: \tau_{u_b}$. Thus, we have $\tau_u <: \tau_u'$, which means $\tau_u$ is a least upper bound of $\tau_1$ and $\tau_2$. Similarly, we can show that $\tau_l$ is a greatest lower bound of $\tau_1$ and $\tau_2$.
     \end{itemize}
 
     Therefore, we conclude that $\tau_1\sqcup\tau_2$ and $\tau_1\sqcap\tau_2$ always exist.
