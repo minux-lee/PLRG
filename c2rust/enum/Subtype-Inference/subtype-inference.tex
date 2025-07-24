@@ -321,7 +321,7 @@ We first define an abstract syntax for a simple language of expressions (without
 \vspace{0.5em}
 
 \subsubsection{Subtype, Required Type, and Type Environment Rules}
-We treat the enum type $\epsilon$ as a subtype of the integer type $\Z$. We also introduce a notion of a ``required" type for enforcing enum types in certain contexts. The formal rules for subtyping, required types, and type environments are given in Figure~\ref{fig:subtype-required-rules}. The definition of the lower bound type, $\sqcap$, is in Appendix.
+We treat the enum type $\epsilon$ as a subtype of the integer type $\Z$. We also introduce a notion of a ``required" type for enforcing enum types in certain contexts. The formal rules for subtyping, required types, and type environments are given in Figure~\ref{fig:subtype-required-rules}. The definition of the greatest lower bound type, $\tau_1\sqcap\tau_2$, is in Appendix.
 
 \begin{figure}[ht]
 \centering
@@ -369,9 +369,9 @@ The type checking rules for expressions (without functions) are given in Figure~
 } \\
 \text{\textsc{Check-Let-Req:}} &\quad \infer{\checktype{\Gamma}{\lett{x}{\tau_1}{e_1}{e_2}}{\tau_2}{\Gamma_1 \cup \Gamma_2}}{
 \begin{array}{c}
-\required{\tau_1} \quad \requiretype{\Gamma}{e_1}{\tau_1}{\Gamma_1} \quad
-\checktype{\Gamma[x:\tau_1]}{e_2}{\tau_2}{\Gamma_2}\\
-x \notin \text{Domain}(\Gamma_2) \text{ or } \tau_1 <: \Gamma_2(x)
+\required{\tau_1} \quad \requiretype{\Gamma}{e_1}{\tau_1}{\Gamma_1} \\
+\checktype{\Gamma[x:\tau_1]}{e_2}{\tau_2}{\Gamma_2}\quad
+(\Gamma_2\cup[x:\tau_1])(x)=\tau_1
 \end{array}
 } \\
 \text{\textsc{Check-Let-NoReq:}} &\quad \infer{\checktype{\Gamma}{\lett{x}{\tau_1}{e_1}{e_2}}{\tau_2}{\Gamma_1 \cup \Gamma_2}}{
@@ -411,9 +411,9 @@ The rules for requiring (asserting) specific types are given in Figure~\ref{fig:
 } \\
 \text{\textsc{Require-Let-Req:}} &\quad \infer{\requiretype{\Gamma}{\lett{x}{\tau_1}{e_1}{e_2}}{\tau_2}{\Gamma_1 \cup \Gamma_2}}{
 \begin{array}{c}
-\required{\tau_1} \quad \requiretype{\Gamma}{e_1}{\tau_1}{\Gamma_1} \quad
-\requiretype{\Gamma[x:\tau_1]}{e_2}{\tau_2}{\Gamma_2}\\
-x \notin \text{Domain}(\Gamma_2) \text{ or } \tau_1 <: \Gamma_2(x)
+\required{\tau_1} \quad \requiretype{\Gamma}{e_1}{\tau_1}{\Gamma_1} \\
+\requiretype{\Gamma[x:\tau_1]}{e_2}{\tau_2}{\Gamma_2}\quad
+(\Gamma_2\cup[x:\tau_1])(x)=\tau_1
 \end{array}
 } \\
 \text{\textsc{Require-Let-NoReq:}} &\quad \infer{\requiretype{\Gamma}{\lett{x}{\tau_1}{e_1}{e_2}}{\tau_2}{\Gamma_1 \cup \Gamma_2}}{
@@ -476,8 +476,8 @@ The type checking rules for function abstractions and application are shown in F
 \begin{align*}
 \text{\textsc{Check-Lambda-Req:}} &\quad \infer{\checktype{\Gamma}{\funct{x}{\tau_1}{e}}{\arrowt{\tau_1}{\tau_2}}{\Gamma_1}}{
 \begin{array}{c}
-\required{\tau_1} \quad \checktype{\Gamma[x:\tau_1]}{e}{\tau_2}{\Gamma_1}\\
-x \notin \text{Domain}(\Gamma_1) \text{ or } \tau_1 <: \Gamma_1(x)
+\required{\tau_1} \quad \checktype{\Gamma[x:\tau_1]}{e}{\tau_2}{\Gamma_1}\quad
+(\Gamma_1\cup[x:\tau_1])(x)=\tau_1
 \end{array}} \\
 \text{\textsc{Check-Lambda-NoReq:}} &\quad \infer{\checktype{\Gamma}{\funct{x}{\tau_1}{e}}{\arrowt{\tau_1}{\tau_2}}{\Gamma_1}}{
 \begin{array}{c}
@@ -506,8 +506,8 @@ Finally, the requirement rules for function-related expressions are given in Fig
 \begin{align*}
 \text{\textsc{Require-Lambda-Req:}} &\quad \infer{\requiretype{\Gamma}{\funct{x}{\tau_1}{e}}{\arrowt{\tau_1}{\tau_2}}{\Gamma_1}}{
 \begin{array}{c}
-\required{\tau_1} \quad \requiretype{\Gamma[x:\tau_1]}{e}{\tau_2}{\Gamma_1}\\
-x \notin \text{Domain}(\Gamma_1) \text{ or } \tau_1 <: \Gamma_1(x)
+\required{\tau_1} \quad \requiretype{\Gamma[x:\tau_1]}{e}{\tau_2}{\Gamma_1}\quad
+(\Gamma_1\cup[x:\tau_1])(x)=\tau_1
 \end{array}} \\
 \text{\textsc{Require-Lambda-NoReq:}} &\quad \infer{\requiretype{\Gamma}{\funct{x}{\tau_1}{e}}{\arrowt{\tau_1}{\tau_2}}{\Gamma_1}}{
 \begin{array}{c}
@@ -709,7 +709,7 @@ We define the several notations and rules for the formal proof:
 
 \begin{theorem}
     \label{thm:assoc-iden}
-    For all $\Gamma_1$, $\Gamma_2$ and $e$ where $\Gamma_1\sim\Gamma_2$, suppose there exists a type $\tau$ where $require(\Gamma_1, e, \tau)$ and $require(\Gamma_2, e, \tau)$ both succeed with $\requiretype{\Gamma_1}{e}{\tau}{\Gamma_1'}$ and $\requiretype{\Gamma_2}{e}{\tau}{\Gamma_2'}$. Then, $\Gamma_1'=\Gamma_2'$. Also, if $check(\Gamma_1, e)$ and $check(\Gamma_2, e)$ both succeed with $\checktype{\Gamma_1}{e}{\tau_1}{\Gamma_1'}$ and $\checktype{\Gamma_2}{e}{\tau_2}{\Gamma_2'}$, then $\Gamma_1'=\Gamma_2'$.
+    For all $\Gamma_1$, $\Gamma_2$ and $e$ where $\Gamma_1\sim\Gamma_2$, suppose there exists a type $\tau$ such that $require(\Gamma_1, e, \tau)$ and $require(\Gamma_2, e, \tau)$ both succeed with $\requiretype{\Gamma_1}{e}{\tau}{\Gamma_1'}$ and $\requiretype{\Gamma_2}{e}{\tau}{\Gamma_2'}$. Then, $\Gamma_1'=\Gamma_2'$. Also, if $check(\Gamma_1, e)$ and $check(\Gamma_2, e)$ both succeed with $\checktype{\Gamma_1}{e}{\tau_1}{\Gamma_1'}$ and $\checktype{\Gamma_2}{e}{\tau_2}{\Gamma_2'}$, then $\Gamma_1'=\Gamma_2'$.
 \end{theorem}
 
 \begin{proof}
