@@ -1,10 +1,18 @@
 name = "Prover"
 version = "0.1.0"
-defaultTargets = ["prover"]
+keywords = ["math"]
+defaultTargets = ["Prover"]
+
+[leanOptions]
+pp.unicode.fun = true # pretty-prints `fun a ↦ b`
+autoImplicit = false
+relaxedAutoImplicit = false
+weak.linter.mathlibStandardSet = true
+maxSynthPendingDepth = 3
+
+[[require]]
+name = "mathlib"
+scope = "leanprover-community"
 
 [[lean_lib]]
 name = "Prover"
-
-[[lean_exe]]
-name = "prover"
-root = "Main"
