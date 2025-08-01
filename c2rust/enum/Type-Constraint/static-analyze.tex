@@ -1,0 +1,394 @@
+\documentclass[peerreview, 10pt]{IEEEtran}
+
+\usepackage{times}
+\usepackage{graphicx}
+\usepackage{proof}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{listings}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{simplebnf}
+\usepackage[margin=0.75in]{geometry}
+\usepackage{framed}
+\usepackage{stmaryrd}
+
+\setlength{\jot}{6pt}
+
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+\lstdefinelanguage{Rust}{
+  keywords={break, const, continue, crate, else, enum, extern, false, fn, for, 
+if, impl, in, let, loop, match, mod, move, mut, pub, ref, return, self, Self, 
+static, struct, super, trait, true, type, unsafe, use, where, while, as, async, 
+await, dyn},
+  keywordstyle=\color{magenta},
+  ndkeywords={u8, u16, u32, u64, usize, i8, i16, i32, i64, isize, f32, f64, str,
+ String, char, bool, Option, Result, Some, None, Ok, Err, Box, Vec},
+  ndkeywordstyle=\color{blue},
+  identifierstyle=\color{black},
+  sensitive=true,
+  comment=[l]{//},
+  morecomment=[s]{/*}{*/},
+  commentstyle=\color{codegreen}\ttfamily,
+  stringstyle=\color{codepurple}\ttfamily,
+  morestring=[b]",
+  morestring=[b]'
+}
+
+\lstdefinestyle{mystyle}{
+    backgroundcolor=\color{backcolour},   
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,         
+    breaklines=true,                 
+    captionpos=b,                    
+    keepspaces=true,                 
+    numbers=left,                    
+    numbersep=5pt,                  
+    showspaces=false,                
+    showstringspaces=false,
+    showtabs=false,                  
+    tabsize=2
+}
+
+\lstset{style=mystyle}
+
+\newcommand{\C}[1]{{\small\tt #1}}
+\newcommand{\Z}{\ensuremath{\mathbb{Z}}}
+\newcommand{\lete}[3]{\ensuremath{\mathsf{let}\ #1\ \mathsf{=}\ #2\ \mathsf{in}\ #3}}
+\newcommand{\lett}[4]{\ensuremath{\mathsf{let}\ #1\mathsf{:}\,#2\ \mathsf{=}\ #3\ \mathsf{in}\ #4}}
+\newcommand{\binop}[2]{\ensuremath{#1\ \mathsf{\oplus}\ #2}}
+\newcommand{\ternary}[3]{\ensuremath{\mathsf{if0}\ #1\ \mathsf{then}\ #2\ \mathsf{else}\ #3}}
+\newcommand{\func}[2]{\ensuremath{\lambda #1.#2}}
+\newcommand{\funct}[3]{\ensuremath{\lambda #1\mathsf{:}\,#2.#3}}
+\newcommand{\apply}[2]{\ensuremath{#1\ #2}}
+\newcommand{\raw}[1]{\ensuremath{#1\mathsf{.raw}}}
+\newcommand{\arrowt}[2]{\ensuremath{{#1}\rightarrow{#2}}}
+\newcommand{\checktype}[4]{\ensuremath{{check}(#1,\,#2)=(#3,\,#4)}}
+\newcommand{\requiretype}[4]{\ensuremath{{require}(#1,\,#2,\,#3)=#4}}
+\newcommand{\required}[1]{\ensuremath{#1\text{ is required}}}
+\newcommand{\nrequired}[1]{\ensuremath{#1\text{ is not required}}}
+\newcommand{\forcerequire}[2]{\ensuremath{#1\Rightarrow#2}}
+\newcommand{\domain}[1]{\ensuremath{\text{Domain}(#1)}}
+\newcommand{\cons}[1]{\ensuremath{\llbracket#1\rrbracket}}
+\newcommand{\consp}[2]{\ensuremath{\langle#1,\,#2\rangle}}
+\newcommand{\floor}[1]{\ensuremath{\lfloor#1\rfloor}}
+\newcommand{\ceil}[1]{\ensuremath{\lceil#1\rceil}}
+\newcommand{\enum}{\ensuremath{\epsilon}}
+\newcommand{\ifrule}[2]{\ensuremath{#1&:&#2}}
+\newcommand{\iffrule}[2]{\ensuremath{#1&:&#2}}
+
+\begin{document}
+
+\title{Enum Translation with Type Constraints}
+
+\author{
+    \IEEEauthorblockN{Minwook Lee}\\
+    \IEEEauthorblockA{ryan-lee@kaist.ac.kr}
+}
+
+\maketitle
+
+\section{Notation and Assumptions}
+
+\begin{itemize}
+  \item We consider a type as {\bf a set of values}. Therefore, ${\sf int}$ is equivalent to $\Z$.
+  \begin{itemize}
+     \item Every set operation can be applied to types as well. For example, ${\sf int} \cup \enum = \Z$ and $\enum\subseteq\Z$.
+     \item Every unary or binary operation can be applied to types as well. For example: $$\tau_1\ {binop}\ \tau_2 = \{v_1\ {binop}\ v_2 \mid v_1 \in \tau_1 \land v_2 \in \tau_2\}.$$
+  \end{itemize}
+  \item Type constraint of the identifier $x$ is of the form $\cons{x} = \consp{\floor{x}}{\ceil{x}}$.
+  \begin{itemize}
+    \item $\floor{x}$ is a set of possible values that can be assigned to the identifier.
+    \item $\ceil{x}$ is the required type for $x$ based on the type annotation and its usage context.
+    \item Every set operation can be applied to type constraints as well. For example:
+    \begin{itemize}
+      \item $\cons{x}\subseteq\cons{y} \text{ iff } \floor{x} \subseteq \floor{y} \land \ceil{x} \subseteq \ceil{y}$
+      \item $\cons{x} \cup \cons{y} = \consp{\floor{x} \cup \floor{y}}{\ceil{x} \cup \ceil{y}}$
+      \item $\cons{x}\ binop\ \cons{y} = \consp{\floor{x}\ binop\ \floor{y}}{\ceil{x}\ binop\ \ceil{y}}$
+    \end{itemize}
+  \end{itemize}
+\end{itemize}
+
+\section{Basic MIR}
+
+\subsection{Abstract Syntax}
+
+\begin{figure}[ht]
+\centering
+\begin{framed}
+\[
+  \begin{array}{@{}rcl@{}}
+    n &\in& \mathbb{Z} \\
+    x,y &\in& \mathit{Id} \\
+    f &:=& \overline{B:b};\overline{x:\tau} \\
+    b &:=& \overline{s}; t \\
+    s &:=& x=n\ |\ x=y\ |\ x={\it unop}\ y\ |\ x=y_1\ {\it binop}\ y_2 \\
+    t &:=& {\sf goto}\ B\ |\ {\sf switch}\ x\ \overline{n:B}\ |\ {\sf return} \\
+    \epsilon &\in& \mathit{Enum} \\
+    \tau &:=& {\sf int}\ |\ \epsilon \\
+  \end{array}
+\]
+\end{framed}
+\caption{Basic MIR Abstract Syntax}
+  \label{fig:basic-absyn}
+\end{figure}
+
+The abstract syntax of the basic MIR is shown in Fig~\ref{fig:basic-absyn}.
+%
+In MIR, a function $f$ is represented with the type
+\C{Body}\footnote{\url{https://doc.rust-lang.org/beta/nightly-rustc/rustc\_middle/mir/struct.Body.html}},
+which denotes a control flow graph (CFG) consisting of multiple basic blocks.
+%
+Each basic block $b$ is represented with the type
+\C{BasicBlockData}\footnote{\url{https://doc.rust-lang.org/beta/nightly-rustc/rustc\_middle/mir/struct.BasicBlockData.html}}
+and consists of multiple statements followed by a single terminator.
+%
+In a basic block, statements do not have any control flow effect, and only
+terminators affect the control flow.
+%
+A basic block is associated with a unique identifier $B$, represented with the
+type
+\C{BasicBlock}\footnote{\url{https://doc.rust-lang.org/beta/nightly-rustc/rustc\_middle/mir/struct.BasicBlock.html}}.
+%
+A statement $s$ has the type
+\C{Statement}\footnote{\url{https://doc.rust-lang.org/beta/nightly-rustc/rustc_middle/mir/struct.Statement.html}}.
+%
+While various kinds of statements exist in MIR, we only need to consider
+assignments.
+%
+The left-hand side of an assignment is a variable $x$, and the right-hand side
+is either an integer $n$, a variable, a unary operation, or a binary operation.
+%
+A terminator $t$ has the type
+\C{Terminator}\footnote{\url{https://doc.rust-lang.org/beta/nightly-rustc/rustc\_middle/mir/struct.Terminator.html}}
+and is either a jump to another basic block, a switch, or a return.
+%
+When returning, the return value is always the value stored in the variable
+named \C{\_0}.
+%
+If a function has $n$ parameters, their values are stored in the variables
+\C{\_1}, \C{\_2}, \ldots, \C{\_n}.
+%
+Note that a function declares the type of each variable as well.
+%
+A type $\tau$ is either \C{int} or a C \C{enum} type $\epsilon$.
+
+\subsection{Generating Type Constraints}
+
+The rules for type constraints in basic MIR are shown in Fig~\ref{fig:basic-type-constraints}.
+
+\begin{figure}[ht]
+\begin{framed}
+For the function $f$:
+\[
+\begin{array}{@{}ccl@{}}
+  \ifrule{\overline{B:b};\overline{x:\tau}}{\ceil{\overline{x}}\subseteq\overline{\tau}}\\
+\end{array}
+\]
+For the statement $s$:
+\[
+\begin{array}{@{}ccl@{}}
+  \ifrule{x=n}{n\in\floor{x}}\\
+  \ifrule{x=y}{\cons{y}\subseteq\cons{x}}\\
+  \ifrule{x={\it unop}\ y}{unop\ \floor{y}\subseteq\floor{x}}\\
+  \ifrule{x=y_1\ {\it binop}\ y_2}{\floor{y_1}\ binop\ \floor{y_2}\subseteq\floor{x}}
+\end{array}
+\]
+\end{framed}
+\caption{Basic MIR Type Constraints}
+\label{fig:basic-type-constraints}
+\end{figure}
+
+\subsection{Resolving Type Constraints}
+
+We resolve the type constraints with the following principles:
+
+\begin{itemize}
+  \item We always choose the smallest set for $\floor{x}$ that satisfies the type constraints.
+  \begin{itemize}
+    \item This increases the coverage where the enum translation can be applied.
+  \end{itemize}
+  \item We always choose the largest set for $\ceil{x}$ that satisfies the type constraints.
+  \begin{itemize}
+    \item This prevents the redundant enum translation.
+  \end{itemize}
+\end{itemize}
+
+\subsection{Examples}
+Assume $\enum = \{0,1\}$.
+\subsubsection{Simple case}
+The following is an example of a basic MIR function:
+\[
+  x:\enum;\ y:\Z;\ \{y=1;\ x=y;\ \sf return\}
+\]
+
+We can derive the following conditions:
+
+\[
+\begin{array}{@{}ccl@{}}
+  \ifrule{x:\enum}{\ceil{x}\subseteq\enum}\\
+  \ifrule{y:\Z}{\ceil{y}\subseteq\Z}\\
+  \ifrule{y=1}{1\in\floor{y}}\\
+  \ifrule{x=y}{\cons{y}\subseteq\cons{x}}
+\end{array}
+\]
+
+By resolving the type constraints we have:
+\[
+\cons{x}=\consp{\{1\}}{\enum}\quad\cons{y}=\consp{\{1\}}{\enum}.
+\]
+
+Now we deduce that $\floor{x}\subseteq\ceil{x}$ and $\floor{y}\subseteq\ceil{y}$. Therefore, we now safely modify the function to:
+\[
+\cdots;\ y:\enum;\ \cdots.
+\]
+
+Also, the translation doesn't introduce the unsafe code since all required types are valid Rust enum types.
+
+\subsubsection{Solving more cases with type constraints}
+The following is an example of a basic MIR function showing how deriving value constraints would work in case where subtype inference could not be applied:
+\[
+  x:\enum;\ y:\Z;\ \{y=-1;\ x=-y;\ \sf return\}
+\]
+
+We can derive the following conditions:
+
+\[
+\begin{array}{@{}ccl@{}}
+  \ifrule{x:\enum}{\ceil{x}\subseteq\enum}\\
+  \ifrule{y:\Z}{\ceil{y}\subseteq\Z}\\
+  \ifrule{y=-1}{-1\in\floor{y}}\\
+  \ifrule{x=-y}{-\floor{y}\subseteq\floor{x}}
+\end{array}
+\]
+
+By resolving the type constraints we have:
+\[
+\cons{x}=\consp{\{1\}}{\enum}\quad\cons{y}=\consp{\{-1\}}{\Z}.
+\]
+
+Now we deduce that all $\floor{x}\subseteq\ceil{x}$ and $\floor{y}\subseteq\ceil{y}$. Therefore, we can translate the integer type to the Rust enum type. However, this procedure would introduce unsafe code on $x=-y$ while translating the type of $x$ to be $\enum$.
+
+\section{Adding pointers}
+
+\subsection{Abstract Syntax}
+
+The abstract syntax of MIR with pointers is shown in Fig~\ref{fig:mir-pointers-absyn}.
+
+\begin{figure}[ht]
+\centering
+\begin{framed}
+\[
+  \begin{array}{@{}rcl@{}}
+    s &:=& \cdots\ |\ x=\&y\ |\ x=*y\ |\ *x=y \\
+    \tau &:=& \cdots\ |\ *\tau \\
+  \end{array}
+\]
+\end{framed}
+\caption{MIR Abstract Syntax with Pointers}
+\label{fig:mir-pointers-absyn}
+\end{figure}
+
+We denote the abstract cell $c\in\mathit{Cell}$ as the set of all locations while $\cons{c}=\consp{\floor{c}}{\ceil{c}}$ denotes the type constraint of the value which is located on $c$. The pointer type $*\tau$ denotes the set of cells that can be dereferenced to a value of type $\tau$. If $x$ can be dereferenced to a value of type $\tau_1$ and $\tau_1\subseteq\tau_2$, then $x$ can also be dereferenced to a value of type $\tau_2$. This means that $*\tau_1\subseteq *\tau_2$.
+
+\subsection{Generating Type Constraints}
+
+We choose an Andersen-style pointer analysis, since we do not expect real-world C code to use extensive pointer operations that would require flow-sensitive analysis for enum types.
+
+The rules for type constraints in MIR with pointers are shown in Fig~\ref{fig:mir-pointers-type-constraints}.
+
+\begin{figure}[ht]
+\begin{framed}
+For the statement $s$:
+\[\cdots\]
+\[
+\begin{array}{@{}lclccc@{}}
+  \ifrule{x=\&y}{\forall\tau,&y\subseteq \floor{x}&\land&\tau\subseteq\ceil{y}\Rightarrow*\tau\subseteq\ceil{x}}\\
+  \ifrule{x=*y}{\forall\tau\forall c,&
+    c\in \floor{y}\Rightarrow\cons{c}\subseteq\cons{x}&\land&
+    *\tau\subseteq\ceil{y}\Rightarrow\tau\subseteq\ceil{x}
+  }\\
+  \ifrule{*x=y}{\forall\tau\forall c,&
+    c\in \floor{x}\Rightarrow\cons{y}\subseteq\cons{c}&\land&
+    \tau\subseteq\ceil{y}\Rightarrow*\tau\subseteq\ceil{x}
+  }
+\end{array}
+\]
+\end{framed}
+\caption{MIR Type Constraints with Pointers}
+\label{fig:mir-pointers-type-constraints}
+\end{figure}
+
+\subsection{Examples}
+
+Assume $\enum = \{0,1\}$.
+The following is an example of a basic MIR function with pointers:
+\[
+  x:*\Z;\ y:\Z;\ z:\enum;\ \{y=1;\ x=\&y;\ z=*x;\ \sf return\}
+\]
+
+Each statement and variable declaration generates the following type constraints:
+\[
+\begin{array}{@{}ccl@{}}
+  \ifrule{x:*\Z}{\ceil{x}\subseteq *\Z}\\
+  \ifrule{y:\Z}{\ceil{y}\subseteq \Z}\\
+  \ifrule{z:\enum}{\ceil{z}\subseteq \enum}\\
+  \ifrule{y=1}{1\in\floor{y}}\\
+  \ifrule{x=\&y}{\forall\tau,\ y\subseteq \floor{x}\ \land\ \tau\subseteq\ceil{y}\Rightarrow*\tau\subseteq\ceil{x}}\\
+  \ifrule{z=*x}{\forall\tau\forall c,\ c\in \floor{x}\Rightarrow\cons{c}\subseteq\cons{z}\ \land\ *\tau\subseteq\ceil{x}\Rightarrow\tau\subseteq\ceil{z}}
+\end{array}
+\]
+
+Now we resolve the type constraints as follows:
+
+\[
+\begin{aligned}
+  &\floor{y}=\{1\}\\
+  &\floor{x}=\{y\}\\
+  &\cons{y}\subseteq\cons{z}\\
+  &\tau\subseteq\ceil{y}\Rightarrow *\tau\subseteq\ceil{x}\Rightarrow\tau\subseteq\ceil{z}\subseteq\enum\\
+  \therefore\ &\ceil{x}\subseteq*\enum\ \land\ \ceil{y}\subseteq\enum\ \land\ \ceil{z}\subseteq\enum
+\end{aligned}
+\]
+
+By resolving the type constraints we have:
+
+\[
+\cons{x}=\consp{\{y\}}{*\enum}\quad\cons{y}=\consp{\{1\}}{\enum}\quad\cons{z}=\consp{\{1\}}{\enum}.
+\]
+
+\section{Adding structs and arrays}
+
+\subsection{Abstract Syntax}
+The abstract syntax of MIR with structs and arrays is shown in Fig~\ref{fig:mir-structs-arrays-absyn}.
+\begin{figure}[ht]
+\centering
+\begin{framed}
+\[
+  \begin{array}{@{}rcl@{}}
+    F &\in& \mathit{Field} \\
+    S &\in& \mathit{Struct} \\
+    s &:=& \cdots\ |\ x.F=y\ |\ x=y.F\ |\ x[x']=y\ |\ x=y[y'] \\
+    \tau &:=& \cdots\ |\ S\ |\ \tau[] \\
+    p &:=& \overline{S \{ \overline{F:\tau} \}}; \overline{f} \\
+  \end{array}
+\]
+\end{framed}
+\caption{MIR Abstract Syntax with Structs and Arrays}
+\label{fig:mir-structs-arrays-absyn}
+\end{figure}
+
+
+
+\end{document}
