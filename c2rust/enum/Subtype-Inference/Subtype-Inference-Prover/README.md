@@ -1,1 +1,0 @@
-# Subtype-Inference-Prover
