@@ -47,7 +47,11 @@ instance : ToString TypeEnv where
     "]"
 
 def TypeEnv.lookup (tenv : TypeEnv) (x : String) : Option MyType :=
-  tenv.find? (fun (y, _) => x = y) |>.map (·.2)
+  match tenv with
+  | [] => none
+  | (x', t) :: rest =>
+      if x = x' then some t
+      else TypeEnv.lookup rest x
 
 def TypeEnv.sameKind : TypeEnv -> TypeEnv -> Bool
   | [], [] => true

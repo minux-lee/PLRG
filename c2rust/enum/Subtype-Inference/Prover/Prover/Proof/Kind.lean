@@ -99,8 +99,8 @@ lemma checkConstantIsEnumOrInt
     simp [h1]
 
 lemma requireConstantIsEnumOrInt
-    {Γ : TypeEnv} {n : Nat} {t : MyType}
-    (h : require Γ (.const n) t = some []) :
+    {Γ : TypeEnv} {n : Nat} {t : MyType} {A : AssociatedTypeEnv}
+    (h : require Γ (.const n) t = some A) :
     t = .enum ∨ t = .int := by
   cases t with
   | enum => simp
@@ -120,8 +120,8 @@ lemma requireConstantIsEnumOrInt
 
 lemma enumOrIntSameKind
     {t1 t2 : MyType}
-    (h : t1 = .int ∨ t1 = .enum)
-    (h' : t2 = .int ∨ t2 = .enum) :
+    (h : t1 = .enum ∨ t1 = .int)
+    (h' : t2 = .enum ∨ t2 = .int) :
     t1 ~ t2 := by
   cases h with
   | inl h1 =>
@@ -132,6 +132,47 @@ lemma enumOrIntSameKind
       cases h' with
       | inl h2 => simp [MyType.sameKind, h1, h2]
       | inr h2 => simp [MyType.sameKind, h1, h2]
+
+lemma sameKindEnvironmentSameKindTypeOnSameVariable
+    {Γ1 Γ2 : TypeEnv} {x : String} {t1 t2 : MyType}
+    (hΓ : (Γ1 ~ Γ2) = true)
+    (ht1 : Γ1.lookup x = some t1)
+    (ht2 : Γ2.lookup x = some t2) :
+    t1 ~ t2 := by
+  revert Γ2 t2 ht2 ht1
+  induction Γ1 with
+  | nil =>
+      intro Γ2 t2 ht2 ht1 hΓ
+      simp [TypeEnv.lookup] at ht1
+  | cons pair Γ ih =>
+    cases pair with
+    | mk x' t' =>
+      intro Γ2 t2 hΓ ht1 ht2
+      cases Γ2 with
+      | nil =>
+          simp [TypeEnv.sameKind] at hΓ
+      | cons pair2 Γ2' =>
+        cases pair2 with
+        | mk x2 t2h =>
+          have hhead :
+              (x' = x2 ∧ (t' ~ t2h) = true) ∧ (Γ ~ Γ2') = true := by
+            simpa [TypeEnv.sameKind, Bool.and_eq_true] using hΓ
+          by_cases hx : x = x'
+          · have ht1' : t' = t1 := by
+              simpa [TypeEnv.lookup, hx] using ht1
+            have hxx2 : x = x2 := by simpa [hx] using hhead.1.left
+            have ht2' : t2h = t2 := by
+              simpa [TypeEnv.lookup, hxx2] using ht2
+            simpa [ht1', ht2'] using hhead.left.right
+          · have ht1tail : TypeEnv.lookup Γ x = some t1 := by
+              simpa [TypeEnv.lookup, hx] using ht1
+            have hx_ne_x2 : x ≠ x2 := by
+              intro hxeq
+              have : x = x' := by simpa [hhead.1] using hxeq
+              exact hx this
+            have ht2tail : TypeEnv.lookup Γ2' x = some t2 := by
+              simpa [TypeEnv.lookup, hx_ne_x2] using ht2
+            exact ih (Γ2 := Γ2') (t2 := t2) hhead.right ht1tail ht2tail
 
 theorem checkOrRequireSameKind
     {Γ1 Γ2 : TypeEnv} {e : Expr} {t1 t2 : MyType}
@@ -147,4 +188,16 @@ theorem checkOrRequireSameKind
         rcases h with ⟨⟨A1, h1⟩, ⟨A2, h2⟩⟩
         have h1' : t1 = .enum ∨ t1 = .int := checkConstantIsEnumOrInt h1
         have h2' : t2 = .enum ∨ t2 = .int := checkConstantIsEnumOrInt h2
-        simp [hΓ, MyType.sameKind, h1', h2']
+        exact (enumOrIntSameKind h1' h2')
+      · intro h
+        rcases h with ⟨⟨A1, h1⟩, ⟨A2, h2⟩⟩
+        have h1' : t1 = .enum ∨ t1 = .int := requireConstantIsEnumOrInt h1
+        have h2' : t2 = .enum ∨ t2 = .int := requireConstantIsEnumOrInt h2
+        exact (enumOrIntSameKind h1' h2')
+  | var x =>
+      intro Γ1 Γ2 t1 t2 hΓ
+      constructor
+      · intro h
+        rcases h with ⟨⟨A1, h1⟩, ⟨A2, h2⟩⟩
+        have ht1 : Γ1.lookup x = some t1 := by
+          simpa [check, Option.map_eq_some_iff] using h1
