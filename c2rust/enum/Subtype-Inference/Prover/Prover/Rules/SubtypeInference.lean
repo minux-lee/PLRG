@@ -127,7 +127,7 @@ mutual
             some [(x, t)]
         -- Require-ConstEnum
         | .const n =>
-            if enumVariants.contains n then
+            if t = .enum && enumVariants.contains n then
               some []
             else
               none

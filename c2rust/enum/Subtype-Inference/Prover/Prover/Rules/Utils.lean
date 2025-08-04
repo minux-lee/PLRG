@@ -1,18 +1,5 @@
 import Prover.Rules.AbstractSyntax
 
--- Env Utils
-def TypeEnv := List (String × MyType)
-
-instance : ToString TypeEnv where
-  toString tenv :=
-    "[" ++
-    String.intercalate ", "
-      (tenv.map (fun (x, t) => s!"({x}, {t.ToString})")) ++
-    "]"
-
-def TypeEnv.lookup (tenv : TypeEnv) (x : String) : Option MyType :=
-  tenv.find? (fun (y, _) => x = y) |>.map (·.2)
-
 -- Type Utils
 def MyType.sameKind : MyType → MyType → Bool
   | .int, .int => true
@@ -48,5 +35,26 @@ mutual
         | _, _ => none
     | _, _ => none
 end
+
+-- Env Utils
+def TypeEnv := List (String × MyType)
+
+instance : ToString TypeEnv where
+  toString tenv :=
+    "[" ++
+    String.intercalate ", "
+      (tenv.map (fun (x, t) => s!"({x}, {t.ToString})")) ++
+    "]"
+
+def TypeEnv.lookup (tenv : TypeEnv) (x : String) : Option MyType :=
+  tenv.find? (fun (y, _) => x = y) |>.map (·.2)
+
+def TypeEnv.sameKind : TypeEnv -> TypeEnv -> Bool
+  | [], [] => true
+  | (x1, t1) :: rest1, (x2, t2) :: rest2 =>
+      x1 = x2 && t1 ~ t2 && TypeEnv.sameKind rest1 rest2
+  | _, _ => false
+
+infix:50 " ~ " => TypeEnv.sameKind
 
 -- Expression Utils
