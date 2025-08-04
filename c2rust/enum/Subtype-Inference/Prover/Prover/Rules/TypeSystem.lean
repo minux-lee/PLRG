@@ -1,5 +1,5 @@
-import Prover.AbstractSyntax
-import Prover.Utils
+import Prover.Rules.AbstractSyntax
+import Prover.Rules.Utils
 set_option linter.hashCommand false
 
 -- Subtype relation for MyType
@@ -8,7 +8,7 @@ def isSubType : MyType → MyType → Bool
   | .enum, .int => true
   | .arrow t1 t2, .arrow t3 t4 =>
       isSubType t3 t1 && isSubType t2 t4
-  | t1, t2 => Type.eq t1 t2
+  | t1, t2 => t1 = t2
 termination_by a b => sizeOf a + sizeOf b
 
 infix:50 "<:" => isSubType
@@ -39,12 +39,11 @@ def typeCheck (tenv : TypeEnv) : Expr -> Option MyType
         if t' <: t then r2
         else .none
   | .binop e1 e2 =>
-      let r1 := typeCheck tenv e1
-      let r2 := typeCheck tenv e2
-      r1.bind fun t1 =>
-        r2.bind fun t2 =>
+      match typeCheck tenv e1, typeCheck tenv e2 with
+      | .some t1, .some t2 =>
           if t1 <: .int && t2 <: .int then .some .int
           else .none
+      | _, _ => .none
   | .lambda x t e =>
       let tenv' := (x, t) :: tenv
       let r := typeCheck tenv' e
