@@ -2,14 +2,16 @@ import Prover.Rules.Basic
 
 -- Type
 
-lemma sameKind_refl (t : MyType) : t ~ t := by
+@[simp]
+lemma sameKind_refl {t : MyType} : t ~ t := by
   induction t with
   | enum => simp [MyType.sameKind]
   | int => simp [MyType.sameKind]
   | arrow a b ihA ihB =>
     simp [MyType.sameKind, ihA, ihB]
 
-lemma sameKind_symm (t1 t2 : MyType) (h : t1 ~ t2) : t2 ~ t1 := by
+@[simp]
+lemma sameKind_symm {t1 t2 : MyType} (h : t1 ~ t2) : t2 ~ t1 := by
   revert t2
   induction t1 with
   | enum =>
@@ -32,6 +34,33 @@ lemma sameKind_symm (t1 t2 : MyType) (h : t1 ~ t2) : t2 ~ t1 := by
           (a ~ c) = true ∧ (b ~ d) = true := by
         simpa [MyType.sameKind, Bool.and_eq_true] using h
       simp [MyType.sameKind, ihA, ihB, ha, hb]
+
+@[simp]
+lemma sameKind_transitive {t1 t2 t3: MyType}
+ (h1 : t1 ~ t2) (h2 : t2 ~ t3) : t1 ~ t3 := by
+revert t2 t3
+induction t1 with
+  | enum =>
+    intro t2 t3 h1 h2
+    cases t2 <;> cases t3 <;> simp [MyType.sameKind] at h1 h2 ⊢
+  | int =>
+    intro t2 t3 h1 h2
+    cases t2 <;> cases t3 <;> simp [MyType.sameKind] at h1 h2 ⊢
+  | arrow a b ihA ihB =>
+    intro t2 t3 h1 h2
+    cases t2 with
+    | enum => simp [MyType.sameKind] at h1
+    | int => simp [MyType.sameKind] at h1
+    | arrow c d =>
+      cases t3 with
+      | enum => simp [MyType.sameKind] at h2
+      | int => simp [MyType.sameKind] at h2
+      | arrow e f =>
+        have ⟨ha1, hb1⟩ : (a ~ c) = true ∧ (b ~ d) = true := by
+          simpa [MyType.sameKind, Bool.and_eq_true] using h1
+        have ⟨ha2, hb2⟩ : (c ~ e) = true ∧ (d ~ f) = true := by
+          simpa [MyType.sameKind, Bool.and_eq_true] using h2
+        simp [MyType.sameKind, ihA ha1 ha2, ihB hb1 hb2]
 
 theorem sameKindTypesExistBounds {t1 t2 : MyType}
     (h : (t1 ~ t2) = true) :
@@ -68,6 +97,27 @@ theorem sameKindTypesExistBounds {t1 t2 : MyType}
       · simp [MyType.lowerBound, hua, hlb]
       · simp [MyType.upperBound, hla, hub]
 
+lemma subtypeIsSameKind (t1 t2 : MyType) (h : t1 <: t2) : t1 ~ t2 := by
+  cases t1 with
+  | enum =>
+    cases t2 with
+    | enum => simp [MyType.sameKind]
+    | int => simp [MyType.sameKind]
+    | arrow c d => cases (by simp [isSubType] at h : False)
+  | int =>
+    cases t2 with
+    | enum => simp [MyType.sameKind]
+    | int => simp [MyType.sameKind]
+    | arrow c d => cases (by simp [isSubType] at h : False)
+  | arrow a b =>
+    cases t2 with
+    | enum => cases (by simp [isSubType] at h : False)
+    | int => cases (by simp [isSubType] at h : False)
+    | arrow c d =>
+      have h' : c <: a ∧ b <: d := by simpa [isSubType, Bool.and_eq_true] using h
+      rcases h' with ⟨h₁, h₂⟩
+      simp [MyType.sameKind, subtypeIsSameKind c a h₁, subtypeIsSameKind b d h₂]
+termination_by sizeOf t1 + sizeOf t2
 
 -- TypeEnv
 
@@ -126,14 +176,61 @@ lemma enumOrIntSameKind
   cases h with
   | inl h1 =>
       cases h' with
-      | inl h2 => simp [MyType.sameKind, h1, h2]
+      | inl h2 => simp [h1, h2]
       | inr h2 => simp [MyType.sameKind, h1, h2]
   | inr h1 =>
       cases h' with
       | inl h2 => simp [MyType.sameKind, h1, h2]
-      | inr h2 => simp [MyType.sameKind, h1, h2]
+      | inr h2 => simp [h1, h2]
 
-lemma sameKindEnvironmentSameKindTypeOnSameVariable
+lemma checkVarLookupIsSome
+    {Γ : TypeEnv} {x : String} {t : MyType} {A : AssociatedTypeEnv}
+    (h : check Γ (.var x) = some (t, A)) :
+    Γ.lookup x = some t := by
+  have h' : (match Γ.lookup x with
+            | none => none
+            | some t => some (t, [])) = some (t, A) := by
+    simpa [check] using h
+  cases hoption: Γ.lookup x with
+  | none => simp [hoption] at h'
+  | some t' =>
+    have h : t = t' ∧ A = [] := by
+      simpa [hoption] using h'.symm
+    simp [h]
+
+lemma requireVarLookupIsSomeAndSameKind
+    {Γ : TypeEnv} {x : String} {t : MyType} {A : AssociatedTypeEnv}
+    (h : require Γ (.var x) t = some A) :
+    ∃t' , (Γ.lookup x = some t' ∧ t' ~ t) := by
+  by_cases hreq: isRequiredType t
+  · have h' : (match Γ.lookup x with
+              | some t' => if (t' ~ t) = true then some [(x, t)] else none
+              | x => none) =
+              some A := by
+      simpa [require, hreq] using h
+    cases hlookup: Γ.lookup x with
+    | none => simp [hlookup] at h'
+    | some t' =>
+      have hin : (t' ~ t) = true ∧ [(x, t)] = A := by
+        simpa [hlookup] using h'
+      simp [hin]
+  · have h' : ∃t1, (check Γ (.var x) = some (t1, A) ∧ t1 <: t) := by
+      have h'' : ((check Γ (.var x)) >>= fun x =>
+          if (x.fst <: t) = true then some x.snd else none) = some A := by
+        simpa [require, hreq] using h
+      cases hcheck : check Γ (.var x) with
+      | none => simp [hcheck] at h''
+      | some pair => cases hpair: pair with
+        | mk t1 A' =>
+          have h''': (t1 <: t) = true ∧ A' = A := by
+            simpa [hcheck, hpair] using h''
+          simp [h''']
+    rcases h' with ⟨t1, ⟨hCheck, hSub⟩⟩
+    have hlookup : Γ.lookup x = some t1 := checkVarLookupIsSome hCheck
+    exists t1
+    simp [hlookup, subtypeIsSameKind t1 t hSub]
+
+lemma sameKindEnvironmentProviedsSameKindTypeOnSameVariable
     {Γ1 Γ2 : TypeEnv} {x : String} {t1 t2 : MyType}
     (hΓ : (Γ1 ~ Γ2) = true)
     (ht1 : Γ1.lookup x = some t1)
@@ -199,5 +296,18 @@ theorem checkOrRequireSameKind
       constructor
       · intro h
         rcases h with ⟨⟨A1, h1⟩, ⟨A2, h2⟩⟩
-        have ht1 : Γ1.lookup x = some t1 := by
-          simpa [check, Option.map_eq_some_iff] using h1
+        have ht1 : (Γ1.lookup x) = some t1 := checkVarLookupIsSome h1
+        have ht2 : (Γ2.lookup x) = some t2 := checkVarLookupIsSome h2
+        exact sameKindEnvironmentProviedsSameKindTypeOnSameVariable hΓ ht1 ht2
+      · intro h
+        rcases h with ⟨⟨A1, h1⟩, ⟨A2, h2⟩⟩
+        have ht1 : ∃ t', Γ1.lookup x = some t' ∧ (t' ~ t1) = true := requireVarLookupIsSomeAndSameKind h1
+        have ht2 : ∃ t', Γ2.lookup x = some t' ∧ (t' ~ t2) = true := requireVarLookupIsSomeAndSameKind h2
+        rcases ht1 with ⟨t1', ⟨hl1, hs1⟩⟩
+        rcases ht2 with ⟨t2', ⟨hl2, hs2⟩⟩
+        have t1't2' : t1' ~ t2' := sameKindEnvironmentProviedsSameKindTypeOnSameVariable hΓ hl1 hl2
+        have t1t1' : t1 ~ t1' := by simp [hs1]
+        have t2't2 : t2' ~ t2 := by simp [hs2]
+        have t1t2' : t1 ~ t2' := sameKind_transitive t1t1' t1't2'
+        exact sameKind_transitive t1t2' t2't2
+  | binop e1 e2 =>

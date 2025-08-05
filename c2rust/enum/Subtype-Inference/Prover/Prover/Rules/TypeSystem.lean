@@ -11,7 +11,7 @@ def isSubType : MyType → MyType → Bool
   | t1, t2 => t1 = t2
 termination_by a b => sizeOf a + sizeOf b
 
-infix:50 "<:" => isSubType
+infix:50 " <: " => isSubType
 
 #guard (.enum <: .int) = true
 #guard (.int <: .enum) = false

@@ -124,7 +124,13 @@ mutual
         match e with
         -- Require-Var
         | .var x =>
-            some [(x, t)]
+            if let some t' := tenv.lookup x then
+              if t' ~ t then
+                some [(x, t)]
+              else
+                none
+            else
+              none
         -- Require-ConstEnum
         | .const n =>
             if t = .enum && enumVariants.contains n then
