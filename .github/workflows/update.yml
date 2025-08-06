@@ -7,6 +7,9 @@ on:
 
 jobs:
   check-for-updates: # Determines which updates to apply.
+    defaults:
+      runs:
+        working-directory: ./c2rust/enum/Subtype-Inference/Prover
     runs-on: ubuntu-latest
     outputs:
       is-update-available: ${{ steps.check-for-updates.outputs.is-update-available }}
@@ -18,6 +21,9 @@ jobs:
         # START CONFIGURATION BLOCK 1
         # END CONFIGURATION BLOCK 1
   do-update: # Runs the upgrade, tests it, and makes a PR/issue/commit.
+    defaults:
+      runs:
+        working-directory: ./c2rust/enum/Subtype-Inference/Prover
     runs-on: ubuntu-latest
     permissions:
       contents: write      # Grants permission to push changes to the repository
