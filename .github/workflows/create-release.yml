@@ -2,11 +2,10 @@ name: Create Release
 
 on:
   push:
-    branches:
-      - 'main'
-      - 'master'
+    branches: [main, master]
+    # If lean-toolchain is inside your project subdir, point to it here:
     paths:
-      - 'lean-toolchain'
+      - '.c2rust/enum/Subtype-Inference/Prover/lean-toolchain'
 
 jobs:
   lean-release-tag:
@@ -14,12 +13,12 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    defaults:
-      run:
-        working-directory: ./c2rust/enum/Subtype-Inference/Prover
     steps:
-    - name: lean-release-tag action
-      uses: leanprover-community/lean-release-tag@v1
-      with:
-        do-release: true
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # Many actions need the workspace checked out
+      - uses: actions/checkout@v4
+
+      - name: lean-release-tag action
+        uses: leanprover-community/lean-release-tag@v1
+        with:
+          do-release: true
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
