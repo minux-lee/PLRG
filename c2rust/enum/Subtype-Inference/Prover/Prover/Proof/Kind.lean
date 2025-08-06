@@ -190,7 +190,7 @@ lemma boundSubType {t1 t2 t3 : MyType} :
 
 -- TypeEnv
 
-theorem sameKindTEnvAfterAddingSameKindType
+lemma sameKindTEnvAfterAddingSameKindType
     {Γ1 Γ2 : TypeEnv} {x : String} {t1 t2 : MyType}
     (hΓ : (Γ1 ~ Γ2) = true)
     (ht : (t1 ~ t2) = true) :
