@@ -5,8 +5,7 @@ import Prover.Rules.Basic
 @[simp]
 lemma sameKind_refl {t : MyType} : t ~ t := by
   induction t with
-  | enum => simp [MyType.sameKind]
-  | int => simp [MyType.sameKind]
+  | enum | int => simp [MyType.sameKind]
   | arrow a b ihA ihB =>
     simp [MyType.sameKind, ihA, ihB]
 
@@ -14,20 +13,14 @@ lemma sameKind_refl {t : MyType} : t ~ t := by
 lemma sameKind_symm {t1 t2 : MyType} (h : t1 ~ t2) : t2 ~ t1 := by
   revert t2
   induction t1 with
-  | enum =>
-      intro t2; cases t2 <;> intro h
-      · simp [MyType.sameKind]
-      · simp [MyType.sameKind]
-      · cases (by simp [MyType.sameKind] at h : False)
-  | int =>
+  | enum | int =>
       intro t2; cases t2 <;> intro h
       · simp [MyType.sameKind]
       · simp [MyType.sameKind]
       · cases (by simp [MyType.sameKind] at h : False)
   | arrow a b ihA ihB =>
     intro t2; cases t2 with
-    | enum => intro h; cases (by simp [MyType.sameKind] at h : False)
-    | int  => intro h; cases (by simp [MyType.sameKind] at h : False)
+    | enum | int  => intro h; cases (by simp [MyType.sameKind] at h : False)
     | arrow c d =>
       intro h
       have ⟨ha, hb⟩ :
@@ -40,21 +33,16 @@ lemma sameKind_transitive {t1 t2 t3: MyType}
  (h1 : t1 ~ t2) (h2 : t2 ~ t3) : t1 ~ t3 := by
 revert t2 t3
 induction t1 with
-  | enum =>
-    intro t2 t3 h1 h2
-    cases t2 <;> cases t3 <;> simp [MyType.sameKind] at h1 h2 ⊢
-  | int =>
+  | enum | int =>
     intro t2 t3 h1 h2
     cases t2 <;> cases t3 <;> simp [MyType.sameKind] at h1 h2 ⊢
   | arrow a b ihA ihB =>
     intro t2 t3 h1 h2
     cases t2 with
-    | enum => simp [MyType.sameKind] at h1
-    | int => simp [MyType.sameKind] at h1
+    | enum | int => simp [MyType.sameKind] at h1
     | arrow c d =>
       cases t3 with
-      | enum => simp [MyType.sameKind] at h2
-      | int => simp [MyType.sameKind] at h2
+      | enum | int => simp [MyType.sameKind] at h2
       | arrow e f =>
         have ⟨ha1, hb1⟩ : (a ~ c) = true ∧ (b ~ d) = true := by
           simpa [MyType.sameKind, Bool.and_eq_true] using h1
@@ -81,8 +69,7 @@ theorem sameKindTypesExistBounds {t1 t2 : MyType}
       · cases (by simp [MyType.sameKind] at h : False)
   | arrow a b ihA ihB =>
     intro t2; cases t2 with
-    | enum => intro h; cases (by simp [MyType.sameKind] at h : False)
-    | int  => intro h; cases (by simp [MyType.sameKind] at h : False)
+    | enum | int => intro h; cases (by simp [MyType.sameKind] at h : False)
     | arrow c d =>
       intro h
 
@@ -101,18 +88,15 @@ lemma subtypeIsSameKind (t1 t2 : MyType) (h : t1 <: t2) : t1 ~ t2 := by
   cases t1 with
   | enum =>
     cases t2 with
-    | enum => simp [MyType.sameKind]
-    | int => simp [MyType.sameKind]
+    | enum | int => simp [MyType.sameKind]
     | arrow c d => cases (by simp [isSubType] at h : False)
   | int =>
     cases t2 with
-    | enum => simp [MyType.sameKind]
-    | int => simp [MyType.sameKind]
+    | enum | int => simp [MyType.sameKind]
     | arrow c d => cases (by simp [isSubType] at h : False)
   | arrow a b =>
     cases t2 with
-    | enum => cases (by simp [isSubType] at h : False)
-    | int => cases (by simp [isSubType] at h : False)
+    | enum | int => cases (by simp [isSubType] at h : False)
     | arrow c d =>
       have h' : c <: a ∧ b <: d := by simpa [isSubType, Bool.and_eq_true] using h
       rcases h' with ⟨h₁, h₂⟩
