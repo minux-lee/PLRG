@@ -22,7 +22,7 @@ jobs:
         # END CONFIGURATION BLOCK 1
   do-update: # Runs the upgrade, tests it, and makes a PR/issue/commit.
     defaults:
-      runs:
+      run:
         working-directory: ./c2rust/enum/Subtype-Inference/Prover
     runs-on: ubuntu-latest
     permissions:

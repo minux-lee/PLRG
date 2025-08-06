@@ -15,7 +15,7 @@ jobs:
     permissions:
       contents: write
     defaults:
-      runs:
+      run:
         working-directory: ./c2rust/enum/Subtype-Inference/Prover
     steps:
     - name: lean-release-tag action
