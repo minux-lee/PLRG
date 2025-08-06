@@ -371,7 +371,7 @@ By resolving the type constraints we have:
 \section{Adding structs and arrays}
 
 \subsection{Abstract Syntax}
-The abstract syntax of MIR with structs and arrays is shown in Fig~\ref{fig:mir-structs-arrays-absyn}.
+The abstract syntax of MIR with structs and arrays is shown in Fig~\ref{fig:mir-structs-arrays-absyn}. The array type $\tau[]$ denotes the set of arrays whose elements are of type $\tau$. i.e., if a variable $x$ has the type $\tau[]$ and $y$ has the type $\Z$, then $x[y]\subseteq\tau$.
 \begin{figure}[ht]
 \centering
 \begin{framed}
@@ -389,6 +389,92 @@ The abstract syntax of MIR with structs and arrays is shown in Fig~\ref{fig:mir-
 \label{fig:mir-structs-arrays-absyn}
 \end{figure}
 
+\subsection {Generating Type Constraints}
 
+The rules for type constraints in MIR with structs and arrays are shown in Fig~\ref{fig:mir-structs-arrays-type-constraints}.
+
+\begin{figure}[ht]
+\begin{framed}
+For the struct definition $S \{ \overline{F:\tau} \}$:
+\[
+\begin{array}{@{}ccl@{}}
+  \ifrule{S \{ \overline{F:\tau} \}}{\forall F\in S,\ \Rightarrow \ceil{S.F} \subseteq \tau}
+\end{array}
+\]
+For the statement $s$:
+\[\cdots\]
+\[
+\begin{array}{@{}ccl@{}}
+  \ifrule{x:S}{\forall F\in S,\ \cons{x.F}\subseteq\cons{S.F}}\\
+  \ifrule{x.F=y}{\cons{y} \subseteq \cons{x.F}}\\
+  \ifrule{x=y.F}{\cons{y.F} \subseteq \cons{x}}\\
+  \ifrule{x[x']=y}{\tau\subseteq\floor{y}\Rightarrow\tau[]\subseteq\floor{x}\quad\land\quad\forall\tau,\,\tau\subseteq\ceil{y}\Rightarrow\tau[]\subseteq\ceil{x}}\\
+  \ifrule{x=y[y']}{\tau[]\subseteq\floor{y}\Rightarrow\tau\subseteq\floor{x}\quad\land\quad\forall\tau,\,\tau[]\subseteq\ceil{y}\Rightarrow\tau\subseteq\ceil{x}}
+\end{array}
+\]
+\end{framed}
+\caption{MIR Type Constraints with Structs and Arrays}
+\label{fig:mir-structs-arrays-type-constraints}
+\end{figure}
+
+\section{Adding function calls}
+
+\subsection{Abstract Syntax}
+The abstract syntax of MIR with function calls is shown in Fig~\ref{fig:mir-funcalls-absyn}.
+\begin{figure}[ht]
+\centering
+\begin{framed}
+\[
+  \begin{array}{@{}rcl@{}}
+    g &\in& \mathit{Function} \\
+    p &:=& \overline{S \{ \overline{F:\tau} \}}; \overline{g:f} \\
+    t &:=& \cdots\ |\ x=g(\overline{y}); B \\
+  \end{array}
+\]
+\end{framed}
+\caption{MIR Abstract Syntax with Function Calls}
+\label{fig:mir-funcalls-absyn}
+\end{figure}
+
+We denote the local variable $x$ in the function $g$ as ${g.x}$. For the function call $x=g(\overline{y})$, we assume that $y_r$ is the local variable in $g$ function which is assigned as the return value. Also, we assume that $\overline{x_p}$ is the list of local variables in the current context, which is assigned to each parameter $\overline{y}$. The procedure of function application can be described as follows:
+
+\begin{itemize}
+  \item We assign each value in $\overline{x_p}$ to the corresponding parameter in $g$. i.e., $\overline{g.y=x_p}$.
+  \item Evaluate the function $g$ with the current context.
+  \item Then assign the return value $g.y_r$ to $x$. 
+\end{itemize}
+
+\subsection{Generating Type Constraints}
+
+The rules for type constraints in MIR with function calls are shown in Fig~\ref{fig:mir-funcalls-type-constraints}.
+\begin{figure}[ht]
+\begin{framed}
+\[\cdots\]
+\[\begin{array}{@{}ccl@{}}
+  \ifrule{x=g(\overline{y}); B}{\overline{\cons{x_p}\subseteq\cons{g.y}}\quad\land\quad \cons{g.y_r}\subseteq\cons{x}}\\
+\end{array}\]
+\end{framed}
+\caption{MIR Type Constraints with Function Calls}
+\label{fig:mir-funcalls-type-constraints}
+\end{figure}
+
+\section{Adding function pointers}
+
+\subsection{Abstract Syntax}
+The abstract syntax of MIR with function pointers is shown in Fig~\ref{fig:mir-funcptrs-absyn}.
+\begin{figure}[ht]
+\centering
+\begin{framed}
+\[
+  \begin{array}{@{}rcl@{}}
+    s &:=& \cdots\ |\ x=g \\
+    t &:=& \cdots\ |\ x=y(\overline{y'}); B \\
+    \tau &:=& \cdots\ |\ \overline{\tau}\rightarrow\tau' \\
+  \end{array}
+\]
+\end{framed}
+\caption{MIR Abstract Syntax with Function Pointers}
+\label{fig:mir-funcptrs-absyn}
+\end{figure}
 
 \end{document}

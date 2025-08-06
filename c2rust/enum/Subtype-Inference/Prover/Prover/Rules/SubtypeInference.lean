@@ -38,7 +38,7 @@ def AssociatedTypeEnv.union (env1 env2 : AssociatedTypeEnv) : Option AssociatedT
     )
     (some env1)
 
-infix:50 "⋃" => AssociatedTypeEnv.union
+infix:50 " ⋃ " => AssociatedTypeEnv.union
 
 #guard ([("x", .int)] ⋃ [("y", .enum)]) = some [("y", .enum), ("x", .int)]
 #guard ([("x", .int)] ⋃ [("x", .enum)]) = some [("x", .enum)]
@@ -142,7 +142,7 @@ mutual
         -- Require-Let
         | .dec x t' e1 e2 =>
             require ((x, t') :: tenv) e2 t >>= fun atenv2 =>
-              atenv2.add x t >>= fun atenv2' =>
+              atenv2.add x t' >>= fun atenv2' =>
                 atenv2'.lookup x >>= fun t'' =>
                   require tenv e1 t'' >>= fun atenv1 =>
                     require ((x, t'') :: tenv) e2 t >>= fun atenv2'' =>
@@ -151,11 +151,14 @@ mutual
         | .lambda x t' e =>
             match t with
             | .arrow t1 t2 =>
-                require ((x, t1) :: tenv) e t2 >>= fun atenv1 =>
+                require ((x, t') :: tenv) e t2 >>= fun atenv1 =>
                   atenv1.add x t' >>= fun atenv2 =>
                     atenv2.lookup x >>= fun t'' =>
-                      require ((x, t'') :: tenv) e t2 >>= fun atenv3 =>
-                        atenv2 ⋃ atenv3
+                      if t'' <: t1 then
+                        require ((x, t'') :: tenv) e t2 >>= fun atenv3 =>
+                          atenv2 ⋃ atenv3
+                      else
+                        none
             | _ => none
         -- Require-App
         | .app e1 e2 =>

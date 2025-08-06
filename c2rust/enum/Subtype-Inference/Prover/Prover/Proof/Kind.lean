@@ -97,6 +97,64 @@ theorem sameKindTypesExistBounds {t1 t2 : MyType}
       · simp [MyType.lowerBound, hua, hlb]
       · simp [MyType.upperBound, hla, hub]
 
+lemma boundsExistsSameKindTypes {t1 t2 tl tu : MyType}
+    (h : MyType.lowerBound t1 t2 = some tl ∨
+     MyType.upperBound t1 t2 = some tu) :
+    (t1 ~ t2) = true := by
+  cases ht1: t1 with
+  | enum =>
+    cases ht2: t2 with
+    | enum => simp [MyType.sameKind]
+    | int => simp [MyType.sameKind]
+    | arrow a b => simp [MyType.lowerBound, MyType.upperBound, ht1, ht2] at h
+  | int =>
+    cases ht2: t2 with
+    | enum => simp [MyType.sameKind]
+    | int => simp [MyType.sameKind]
+    | arrow a b => simp [MyType.lowerBound, MyType.upperBound, ht1, ht2] at h
+  | arrow a b =>
+    cases ht2: t2 with
+    | enum => simp [MyType.lowerBound, MyType.upperBound, ht1, ht2] at h
+    | int => simp [MyType.lowerBound, MyType.upperBound, ht1, ht2] at h
+    | arrow c d =>
+      cases hlac : MyType.lowerBound a c with
+      | none =>
+        cases huac : MyType.upperBound a c with
+        | none => simp [MyType.lowerBound, MyType.upperBound, ht1, ht2, hlac, huac] at h
+        | some tuac =>
+          cases hlbd : MyType.lowerBound b d with
+          | none => simp [MyType.lowerBound, MyType.upperBound, ht1, ht2, hlac, hlbd] at h
+          | some tlbd =>
+            have huacl : a.lowerBound c = some tlbd ∨ a.upperBound c = some tuac := by simp [huac]
+            have h1 : (a ~ c) = true := boundsExistsSameKindTypes huacl
+            have hlbdu : b.lowerBound d = some tlbd ∨ b.upperBound d = some tuac := by simp [hlbd]
+            have h2 : (b ~ d) = true := boundsExistsSameKindTypes hlbdu
+            simp [h1, h2, MyType.sameKind]
+      | some tlac =>
+        cases hubd : MyType.upperBound b d with
+        | some tubd =>
+          have hlacu : a.lowerBound c = some tlac ∨ a.upperBound c = some tubd := by simp [hlac]
+          have hubdl : b.lowerBound d = some tlac ∨ b.upperBound d = some tubd := by simp [hubd]
+          have h1 : (a ~ c) = true := boundsExistsSameKindTypes hlacu
+          have h2 : (b ~ d) = true := boundsExistsSameKindTypes hubdl
+          simp [h1, h2, MyType.sameKind]
+        | none =>
+          cases huac : MyType.upperBound a c with
+          | none => simp [MyType.lowerBound, MyType.upperBound, ht1, ht2, hubd, huac] at h
+          | some tuac =>
+            cases hlbd : MyType.lowerBound b d with
+            | none => simp [MyType.lowerBound, MyType.upperBound, ht1, ht2, hubd, hlbd] at h
+            | some tlbd =>
+              have huacl : a.lowerBound c = some tlbd ∨ a.upperBound c = some tuac := by simp [huac]
+              have hlbdu : b.lowerBound d = some tlbd ∨ b.upperBound d = some tuac := by simp [hlbd]
+              have h1 : (a ~ c) = true := boundsExistsSameKindTypes huacl
+              have h2 : (b ~ d) = true := boundsExistsSameKindTypes hlbdu
+              simp [h1, h2, MyType.sameKind]
+
+lemma boundTypesAreSameKind {t1 t2 tl tu : MyType} :
+  ((MyType.lowerBound t1 t2 = some tl) -> t1 ~ tl ∧ t2 ~ tl) ∧
+  ((MyType.upperBound t1 t2 = some tu) -> t1 ~ tu ∧ t2 ~ tu) := sorry
+
 lemma subtypeIsSameKind (t1 t2 : MyType) (h : t1 <: t2) : t1 ~ t2 := by
   cases t1 with
   | enum =>
@@ -230,7 +288,7 @@ lemma requireVarLookupIsSomeAndSameKind
     exists t1
     simp [hlookup, subtypeIsSameKind t1 t hSub]
 
-lemma sameKindEnvironmentProviedsSameKindTypeOnSameVariable
+lemma sameKindEnvironmentProvidesSameKindTypeOnSameVariable
     {Γ1 Γ2 : TypeEnv} {x : String} {t1 t2 : MyType}
     (hΓ : (Γ1 ~ Γ2) = true)
     (ht1 : Γ1.lookup x = some t1)
@@ -271,11 +329,88 @@ lemma sameKindEnvironmentProviedsSameKindTypeOnSameVariable
               simpa [TypeEnv.lookup, hx_ne_x2] using ht2
             exact ih (Γ2 := Γ2') (t2 := t2) hhead.right ht1tail ht2tail
 
-theorem checkOrRequireSameKind
+lemma checkBinopIsInt
+    {Γ : TypeEnv} {e1 e2 : Expr} {t : MyType} {A : AssociatedTypeEnv}
+    (h : check Γ (.binop e1 e2) = some (t, A)) :
+    t = .int := by
+  cases hcheck1: check Γ e1 with
+  | none => simp [check, hcheck1] at h
+  | some pair1 =>
+    cases hcheck2: check Γ e2 with
+    | none => simp [check, hcheck2] at h
+    | some pair2 =>
+      cases pair1 with
+      | mk t1 A1 =>
+        cases pair2 with
+        | mk t2 A2 =>
+          by_cases hint1 : t1 <: .int
+          · by_cases hint2 : t2 <: .int
+            · have h1 : t = .int := by
+                cases hA : (A1⋃A2) with
+                | none => simpa [check, hcheck1, hcheck2, hint1, hint2, hA] using h.symm
+                | some A' =>
+                  have hmore : t = MyType.int ∧ A = A' := by
+                    simpa [check, hcheck1, hcheck2, hint1, hint2, hA] using h.symm
+                  simp [hmore]
+              simp [h1]
+            · simp [check, hcheck1, hcheck2, hint1, hint2] at h
+          · simp [check, hcheck1, hcheck2, hint1] at h
+
+lemma requireBinopIsInt
+    {Γ : TypeEnv} {e1 e2 : Expr} {t : MyType} {A : AssociatedTypeEnv}
+    (h : require Γ (.binop e1 e2) t = some A) :
+    t = .int := by
+  by_cases hreq : isRequiredType t
+  · simp [require, hreq] at h
+  · have hin1 : ((check Γ (.binop e1 e2)) >>= fun x =>
+                  if (x.fst <: t) = true then some x.snd else none) = some A := by
+      simpa [require, hreq] using h
+    cases hcheck : check Γ (.binop e1 e2) with
+    | none => simp [hcheck] at hin1
+    | some pair =>
+      cases hpair: pair with
+      | mk t1 A1 =>
+        have hcheck' : check Γ (.binop e1 e2) = (t1, A1) := by
+          simp [hcheck, hpair]
+        have ht1 : t1 = .int := checkBinopIsInt hcheck'
+        cases ht: t with
+        | enum => simp [isRequiredType, ht] at *
+        | int => simp
+        | arrow l r =>
+          simp [hcheck', ht1, isSubType, ht] at hin1
+
+lemma addAssociatedTypeSameKind
+    {A : AssociatedTypeEnv} {x : String} {t t' : MyType}
+    (h : ((A.add x t) >>= (fun atenv => (atenv.lookup x)) = some t')) :
+    t ~ t' := by
+  cases hAlook : A.lookup x with
+  | none =>
+      have h' : A.add x t = some ((x, t) :: A) := by simp [AssociatedTypeEnv.add, hAlook]
+      have h'' : AssociatedTypeEnv.lookup ((x, t) :: A) x = some t := by
+        simp [AssociatedTypeEnv.lookup]
+      have h''' : (A.add x t) >>= (fun atenv => (atenv.lookup x)) = some t := by
+        simp [h', h'']
+      have tsame : t = t' := by
+        simpa [h''' ] using h
+      simp [tsame]
+  | some t1 => sorry
+
+lemma checkDecFirstBodySome
+    {Γ : TypeEnv} {x : String} {t t' : MyType} {e1 e2 : Expr} {A : AssociatedTypeEnv}
+    (h : check Γ (.dec x t e1 e2) = some (t', A)) :
+    ∃t1, ∃A1, check ((x, t) :: Γ) e2 = some (t1, A1) := by
+  cases hcheck1 : check ((x, t) :: Γ) e2 with
+  | none => simp [check, hcheck1] at h
+  | some pair1 =>
+    cases pair1 with
+    | mk t1 A1 => simp
+
+lemma checkOrRequireSameKind
     {Γ1 Γ2 : TypeEnv} {e : Expr} {t1 t2 : MyType}
     (hΓ : (Γ1 ~ Γ2) = true) :
     (((∃A1, check Γ1 e = some (t1, A1)) ∧ (∃A2, check Γ2 e = some (t2, A2))) -> t1 ~ t2)
-      ∧ (((∃A1, require Γ1 e t1 = some A1) ∧ (∃A2, require Γ2 e t2 = some A2)) -> t1 ~ t2) := by
+      ∧ (((isRequiredType t1) ∧ (isRequiredType t2)
+        ∧ (∃A1, require Γ1 e t1 = some A1) ∧ (∃A2, require Γ2 e t2 = some A2)) -> t1 ~ t2) := by
   revert Γ1 Γ2 t1 t2
   induction e with
   | const n =>
@@ -287,7 +422,7 @@ theorem checkOrRequireSameKind
         have h2' : t2 = .enum ∨ t2 = .int := checkConstantIsEnumOrInt h2
         exact (enumOrIntSameKind h1' h2')
       · intro h
-        rcases h with ⟨⟨A1, h1⟩, ⟨A2, h2⟩⟩
+        rcases h with ⟨ht1, ht2, ⟨A1, h1⟩, ⟨A2, h2⟩⟩
         have h1' : t1 = .enum ∨ t1 = .int := requireConstantIsEnumOrInt h1
         have h2' : t2 = .enum ∨ t2 = .int := requireConstantIsEnumOrInt h2
         exact (enumOrIntSameKind h1' h2')
@@ -298,16 +433,366 @@ theorem checkOrRequireSameKind
         rcases h with ⟨⟨A1, h1⟩, ⟨A2, h2⟩⟩
         have ht1 : (Γ1.lookup x) = some t1 := checkVarLookupIsSome h1
         have ht2 : (Γ2.lookup x) = some t2 := checkVarLookupIsSome h2
-        exact sameKindEnvironmentProviedsSameKindTypeOnSameVariable hΓ ht1 ht2
+        exact sameKindEnvironmentProvidesSameKindTypeOnSameVariable hΓ ht1 ht2
       · intro h
-        rcases h with ⟨⟨A1, h1⟩, ⟨A2, h2⟩⟩
-        have ht1 : ∃ t', Γ1.lookup x = some t' ∧ (t' ~ t1) = true := requireVarLookupIsSomeAndSameKind h1
-        have ht2 : ∃ t', Γ2.lookup x = some t' ∧ (t' ~ t2) = true := requireVarLookupIsSomeAndSameKind h2
+        rcases h with ⟨ht1, ht2, ⟨A1, h1⟩, ⟨A2, h2⟩⟩
+        have ht1 : ∃ t', Γ1.lookup x = some t' ∧ (t' ~ t1) = true :=
+          requireVarLookupIsSomeAndSameKind h1
+        have ht2 : ∃ t', Γ2.lookup x = some t' ∧ (t' ~ t2) = true :=
+          requireVarLookupIsSomeAndSameKind h2
         rcases ht1 with ⟨t1', ⟨hl1, hs1⟩⟩
         rcases ht2 with ⟨t2', ⟨hl2, hs2⟩⟩
-        have t1't2' : t1' ~ t2' := sameKindEnvironmentProviedsSameKindTypeOnSameVariable hΓ hl1 hl2
+        have t1't2' : t1' ~ t2' := sameKindEnvironmentProvidesSameKindTypeOnSameVariable hΓ hl1 hl2
         have t1t1' : t1 ~ t1' := by simp [hs1]
         have t2't2 : t2' ~ t2 := by simp [hs2]
         have t1t2' : t1 ~ t2' := sameKind_transitive t1t1' t1't2'
         exact sameKind_transitive t1t2' t2't2
   | binop e1 e2 =>
+      intro Γ1 Γ2 t1 t2 hΓ
+      constructor
+      · intro h
+        rcases h with ⟨⟨A1, h1⟩, ⟨A2, h2⟩⟩
+        have ht1 : t1 = .int := checkBinopIsInt h1
+        have ht2 : t2 = .int := checkBinopIsInt h2
+        simp [ht1, ht2]
+      · intro h
+        rcases h with ⟨ht1, ht2, ⟨A1, h1⟩, ⟨A2, h2⟩⟩
+        have ht1 : t1 = .int := requireBinopIsInt h1
+        have ht2 : t2 = .int := requireBinopIsInt h2
+        simp [ht1, ht2]
+  | dec x t e1 e2 ih1 ih2 =>
+      intro Γ1 Γ2 t1 t2 hΓ
+      constructor
+      · intro h
+        rcases h with ⟨⟨A1, h1⟩, ⟨A2, h2⟩⟩
+        have hcheck1 : ∃ t1' A1', check ((x, t) :: Γ1) e2 = some (t1', A1') :=
+          checkDecFirstBodySome h1
+        have hcheck2 : ∃ t2' A2', check ((x, t) :: Γ2) e2 = some (t2', A2') :=
+          checkDecFirstBodySome h2
+        rcases hcheck1 with ⟨t1', A1', hcheck1some⟩
+        rcases hcheck2 with ⟨t2', A2', hcheck2some⟩
+        have hadd1 : ∃ Add1, A1'.add x t = some Add1 := by
+          cases hA1 : A1'.add x t with
+          | none => simp [check, hcheck1some, hA1] at h1
+          | some Add1 => simp
+        have hadd2 : ∃ Add2, A2'.add x t = some Add2 := by
+          cases hA2 : A2'.add x t with
+          | none => simp [check, hcheck2some, hA2] at h2
+          | some Add2 => simp
+        rcases hadd1 with ⟨Add1, hadd1some⟩
+        rcases hadd2 with ⟨Add2, hadd2some⟩
+        have hlookup1 : ∃ tlook1, Add1.lookup x = some tlook1 := by
+          cases hlookup1 : Add1.lookup x with
+          | none => simp [check, hcheck1some, hadd1some, hlookup1] at h1
+          | some tlook1 => simp
+        have hlookup2 : ∃ tlook2, Add2.lookup x = some tlook2 := by
+          cases hlookup2 : Add2.lookup x with
+          | none => simp [check, hcheck2some, hadd2some, hlookup2] at h2
+          | some tlook2 => simp
+        rcases hlookup1 with ⟨tlook1, hlookup1some⟩
+        rcases hlookup2 with ⟨tlook2, hlookup2some⟩
+        have htlooksamekind : tlook1 ~ tlook2 := by
+          have hyp1 : ((A1'.add x t) >>= (fun atenv => (atenv.lookup x)) = some tlook1) := by
+            simp [hadd1some, hlookup1some]
+          have hyp2 : ((A2'.add x t) >>= (fun atenv => (atenv.lookup x)) = some tlook2) := by
+            simp [hadd2some, hlookup2some]
+          have htt1 : (t ~ tlook1) = true := addAssociatedTypeSameKind hyp1
+          have ht1t : (tlook1 ~ t) = true := sameKind_symm htt1
+          have htt2 : (t ~ tlook2) = true := addAssociatedTypeSameKind hyp2
+          exact sameKind_transitive ht1t htt2
+        have hrequiresome1 : ∃Areq, require Γ1 e1 tlook1 = some Areq := by
+          cases hreq1 : require Γ1 e1 tlook1 with
+          | none => simp [check, hcheck1some, hadd1some, hlookup1some, hreq1] at h1
+          | some Areq => simp
+        have hrequiresome2 : ∃Areq, require Γ2 e1 tlook2 = some Areq := by
+          cases hreq2 : require Γ2 e1 tlook2 with
+          | none => simp [check, hcheck2some, hadd2some, hlookup2some, hreq2] at h2
+          | some Areq => simp
+        rcases hrequiresome1 with ⟨Areq1, hreq1some⟩
+        rcases hrequiresome2 with ⟨Areq2, hreq2some⟩
+        have haddEnvSameKind : ((x, tlook1) :: Γ1) ~ ((x, tlook2) :: Γ2) :=
+          sameKindTEnvAfterAddingSameKindType hΓ htlooksamekind
+        have hbodySome1 :
+          ∃ tbody1, ∃ Abody1, check ((x, tlook1) :: Γ1) e2 = some (tbody1, Abody1) := by
+          cases hcheck1 : check ((x, tlook1) :: Γ1) e2 with
+          | none => simp [check, hcheck1some, hadd1some, hlookup1some, hreq1some, hcheck1] at h1
+          | some pair =>
+            cases pair with
+            | mk tbody1 Abody1 => simp
+        have hbodySome2 :
+          ∃ tbody2, ∃ Abody2, check ((x, tlook2) :: Γ2) e2 = some (tbody2, Abody2) := by
+          cases hcheck2 : check ((x, tlook2) :: Γ2) e2 with
+          | none => simp [check, hcheck2some, hadd2some, hlookup2some, hreq2some, hcheck2] at h2
+          | some pair =>
+            cases pair with
+            | mk tbody2 Abody2 => simp
+        rcases hbodySome1 with ⟨tbody1, Abody1, hbody1some⟩
+        rcases hbodySome2 with ⟨tbody2, Abody2, hbody2some⟩
+        have htbodySameKind : tbody1 ~ tbody2 := by
+          have hbodycombine : (∃A1, check ((x, tlook1) :: Γ1) e2 = some (tbody1, A1))
+                            ∧ (∃A2, check ((x, tlook2) :: Γ2) e2 = some (tbody2, A2)) := by
+            simp [hbody1some, hbody2some]
+          rcases (ih2 haddEnvSameKind) with ⟨hcheckSameKind, hrequireSameKind⟩
+          exact hcheckSameKind hbodycombine
+        have htbody1 : (Areq1⋃Abody1) = some A1 ∧ tbody1 = t1 := by
+          simpa [
+            check, hcheck1some, hadd1some, hlookup1some, hlookup2some, hreq1some, hbody1some
+          ] using h1
+        rcases htbody1 with ⟨_, htbody1some⟩
+        have htbody2 : (Areq2⋃Abody2) = some A2 ∧ tbody2 = t2 := by
+          simpa [
+            check, hcheck2some, hadd2some, hlookup1some, hlookup2some, hreq2some, hbody2some
+          ] using h2
+        rcases htbody2 with ⟨_, htbody2some⟩
+        simpa [htbody1some, htbody2some] using htbodySameKind
+      · intro h
+        rcases h with ⟨ht1, ht2, h1, h2⟩
+        have hrequire1 : ∃ A1', require ((x, t) :: Γ1) e2 t1 = some A1' := by
+          cases hreqFirst1 : require ((x, t) :: Γ1) e2 t1 with
+          | none => simp [require, hreqFirst1, ht1] at h1
+          | some A1' => simp
+        have hrequire2 : ∃ A2', require ((x, t) :: Γ2) e2 t2 = some A2' := by
+          cases hreqFirst2 : require ((x, t) :: Γ2) e2 t2 with
+          | none => simp [require, hreqFirst2, ht2] at h2
+          | some A2' => simp
+        rcases hrequire1 with ⟨A1', hrequire1some⟩
+        rcases hrequire2 with ⟨A2', hrequire2some⟩
+        have hadd1 : ∃ Add1, A1'.add x t = some Add1 := by
+          cases hA1 : A1'.add x t with
+          | none => simp [require, hrequire1some, hA1, ht1] at h1
+          | some Add1 => simp
+        have hadd2 : ∃ Add2, A2'.add x t = some Add2 := by
+          cases hA2 : A2'.add x t with
+          | none => simp [require, hrequire2some, hA2, ht2] at h2
+          | some Add2 => simp
+        rcases hadd1 with ⟨Add1, hadd1some⟩
+        rcases hadd2 with ⟨Add2, hadd2some⟩
+        have hlookup1 : ∃ tlook1, Add1.lookup x = some tlook1 := by
+          cases hlookup1 : Add1.lookup x with
+          | none => simp [require, ht1, hrequire1some, hadd1some, hlookup1] at h1
+          | some tlook1 => simp
+        have hlookup2 : ∃ tlook2, Add2.lookup x = some tlook2 := by
+          cases hlookup2 : Add2.lookup x with
+          | none => simp [require, ht2, hrequire2some, hadd2some, hlookup2] at h2
+          | some tlook2 => simp
+        rcases hlookup1 with ⟨tlook1, hlookup1some⟩
+        rcases hlookup2 with ⟨tlook2, hlookup2some⟩
+        have htlooksamekind : tlook1 ~ tlook2 := by
+          have hyp1 : ((A1'.add x t) >>= (fun atenv => (atenv.lookup x)) = some tlook1) := by
+            simp [hadd1some, hlookup1some]
+          have hyp2 : ((A2'.add x t) >>= (fun atenv => (atenv.lookup x)) = some tlook2) := by
+            simp [hadd2some, hlookup2some]
+          have htt1 : (t ~ tlook1) = true := addAssociatedTypeSameKind hyp1
+          have ht1t : (tlook1 ~ t) = true := sameKind_symm htt1
+          have htt2 : (t ~ tlook2) = true := addAssociatedTypeSameKind hyp2
+          exact sameKind_transitive ht1t htt2
+        have hrequiresome1 : ∃Areq, require Γ1 e1 tlook1 = some Areq := by
+          cases hreq1 : require Γ1 e1 tlook1 with
+          | none => simp [require, ht1, hrequire1some, hadd1some, hlookup1some, hreq1] at h1
+          | some Areq => simp
+        have hrequiresome2 : ∃Areq, require Γ2 e1 tlook2 = some Areq := by
+          cases hreq2 : require Γ2 e1 tlook2 with
+          | none => simp [require, ht2, hrequire2some, hadd2some, hlookup2some, hreq2] at h2
+          | some Areq => simp
+        rcases hrequiresome1 with ⟨Areq1, hreq1some⟩
+        rcases hrequiresome2 with ⟨Areq2, hreq2some⟩
+        have haddEnvSameKind : ((x, tlook1) :: Γ1) ~ ((x, tlook2) :: Γ2) :=
+          sameKindTEnvAfterAddingSameKindType hΓ htlooksamekind
+        have hbodySome1 : ∃ Abody1, require ((x, tlook1) :: Γ1) e2 t1 = some Abody1 := by
+          cases hcheck1 : require ((x, tlook1) :: Γ1) e2 t1 with
+          | none => simp [
+              require, ht1, hrequire1some, hadd1some, hlookup1some, hreq1some, hcheck1] at h1
+          | some _ => simp
+        have hbodySome2 : ∃ Abody2, require ((x, tlook2) :: Γ2) e2 t2 = some Abody2 := by
+          cases hcheck2 : require ((x, tlook2) :: Γ2) e2 t2 with
+          | none => simp [
+              require, ht2, hrequire2some, hadd2some, hlookup2some, hreq2some, hcheck2] at h2
+          | some _ => simp
+        rcases hbodySome1 with ⟨Abody1, hbody1some⟩
+        rcases hbodySome2 with ⟨Abody2, hbody2some⟩
+        rcases (ih2 haddEnvSameKind) with ⟨_, hrequireSameKind⟩
+        have hbodyCombine : (isRequiredType t1) ∧ (isRequiredType t2)
+           ∧ ((∃A1, require ((x, tlook1) :: Γ1) e2 t1 = some A1)
+           ∧ (∃A2, require ((x, tlook2) :: Γ2) e2 t2 = some A2)) := by
+          simp [ht1, ht2, hbody1some, hbody2some]
+        exact hrequireSameKind hbodyCombine
+    | lambda x t' e ih =>
+      intro Γ1 Γ2 t1 t2 hΓ
+      constructor
+      · intro h
+        rcases h with ⟨⟨A1, h1⟩, ⟨A2, h2⟩⟩
+        have hcheckFirstSome1 :
+          ∃ tfirst1 Afirst1, check ((x, t') :: Γ1) e = some (tfirst1, Afirst1) := by
+          cases hcheck1 : check ((x, t') :: Γ1) e with
+          | none => simp [check, hcheck1] at h1
+          | some pair => cases pair with | mk _ _ => simp
+        have hcheckFirstSome2 :
+          ∃ tfirst2 Afirst2, check ((x, t') :: Γ2) e = some (tfirst2, Afirst2) := by
+          cases hcheck2 : check ((x, t') :: Γ2) e with
+          | none => simp [check, hcheck2] at h2
+          | some pair => cases pair with | mk _ _ => simp
+        rcases hcheckFirstSome1 with ⟨tfirst1, Afirst1, hcheckFirst1some⟩
+        rcases hcheckFirstSome2 with ⟨tfirst2, Afirst2, hcheckFirst2some⟩
+        have hAddSome1 : ∃ Add1, Afirst1.add x t' = some Add1 := by
+          cases hA1 : Afirst1.add x t' with
+          | none => simp [check, hcheckFirst1some, hA1] at h1
+          | some Add1 => simp
+        have hAddSome2 : ∃ Add2, Afirst2.add x t' = some Add2 := by
+          cases hA2 : Afirst2.add x t' with
+          | none => simp [check, hcheckFirst2some, hA2] at h2
+          | some Add2 => simp
+        rcases hAddSome1 with ⟨Add1, hAddSome1⟩
+        rcases hAddSome2 with ⟨Add2, hAddSome2⟩
+        have hlookup1 : ∃ tlook1, Add1.lookup x = some tlook1 := by
+          cases hlookup1 : Add1.lookup x with
+          | none => simp [check, hcheckFirst1some, hAddSome1, hlookup1] at h1
+          | some tlook1 => simp
+        have hlookup2 : ∃ tlook2, Add2.lookup x = some tlook2 := by
+          cases hlookup2 : Add2.lookup x with
+          | none => simp [check, hcheckFirst2some, hAddSome2, hlookup2] at h2
+          | some tlook2 => simp
+        rcases hlookup1 with ⟨tlook1, hlookup1some⟩
+        rcases hlookup2 with ⟨tlook2, hlookup2some⟩
+        have htlooksamekind : tlook1 ~ tlook2 := by
+          have hyp1 : ((Afirst1.add x t') >>= (fun atenv => (atenv.lookup x)) = some tlook1) := by
+            simp [hAddSome1, hlookup1some]
+          have hyp2 : ((Afirst2.add x t') >>= (fun atenv => (atenv.lookup x)) = some tlook2) := by
+            simp [hAddSome2, hlookup2some]
+          have htt1 : (t' ~ tlook1) = true := addAssociatedTypeSameKind hyp1
+          have ht1t : (tlook1 ~ t') = true := sameKind_symm htt1
+          have htt2 : (t' ~ tlook2) = true := addAssociatedTypeSameKind hyp2
+          exact sameKind_transitive ht1t htt2
+        have haddEnvSameKind : ((x, tlook1) :: Γ1) ~ ((x, tlook2) :: Γ2) :=
+          sameKindTEnvAfterAddingSameKindType hΓ htlooksamekind
+        have hcheck1 : ∃ tb1 Ab1, (check ((x, tlook1) :: Γ1) e) = some (tb1, Ab1) := by
+          cases hcheck1 : check ((x, tlook1) :: Γ1) e with
+          | none => simp [check, hcheck1, hcheckFirst1some, hAddSome1, hlookup1some] at h1
+          | some pair => cases pair with | mk _ _ => simp
+        have hcheck2 : ∃ tb2 Ab2, (check ((x, tlook2) :: Γ2) e) = some (tb2, Ab2) := by
+          cases hcheck2 : check ((x, tlook2) :: Γ2) e with
+          | none => simp [check, hcheck2, hcheckFirst2some, hAddSome2, hlookup2some] at h2
+          | some pair => cases pair with | mk _ _ => simp
+        rcases hcheck1 with ⟨tb1, Ab1, hcheck1some⟩
+        rcases hcheck2 with ⟨tb2, Ab2, hcheck2some⟩
+        have htbsamekind : tb1 ~ tb2 := by
+          have hcheckCombine : (∃A1, check ((x, tlook1) :: Γ1) e = some (tb1, A1))
+                            ∧ (∃A2, check ((x, tlook2) :: Γ2) e = some (tb2, A2)) := by
+            simp [hcheck1some, hcheck2some]
+          rcases (ih haddEnvSameKind) with ⟨hcheckSameKind, _⟩
+          exact hcheckSameKind hcheckCombine
+        have hresult1 : (Add1 ⋃ Ab1) = some A1 ∧ tlook1.arrow tb1 = t1 := by
+          simpa [check, hcheckFirst1some, hAddSome1, hlookup1some, hcheck1some] using h1
+        rcases hresult1 with ⟨_, hresult1⟩
+        have hresult2 : (Add2 ⋃ Ab2) = some A2 ∧ tlook2.arrow tb2 = t2 := by
+          simpa [check, hcheckFirst2some, hAddSome2, hlookup2some, hcheck2some] using h2
+        rcases hresult2 with ⟨_, hresult2⟩
+        have harrowsamekind : (tlook1.arrow tb1) ~ (tlook2.arrow tb2) := by
+          simp [htbsamekind, htlooksamekind, MyType.sameKind]
+        simpa [hresult1, hresult2] using harrowsamekind
+      · intro h
+        rcases h with ⟨ht1, ht2, ⟨A1, h1⟩, ⟨A2, h2⟩⟩
+        have ht1arrow : ∃ t11 t12, t1 = .arrow t11 t12 := by
+          cases ht1c : t1 with
+          | enum => simp [require, ht1c, isRequiredType] at h1
+          | int => simp [ht1c, isRequiredType] at *
+          | arrow _ _ => simp
+        have ht2arrow : ∃ t21 t22, t2 = .arrow t21 t22 := by
+          cases ht2c : t2 with
+          | enum => simp [require, ht2c, isRequiredType] at h2
+          | int => simp [ht2c, isRequiredType] at *
+          | arrow _ _ => simp
+        rcases ht1arrow with ⟨t11, t12, ht1arrow⟩
+        rcases ht2arrow with ⟨t21, t22, ht2arrow⟩
+        have ht1 : isRequiredType (t11.arrow t12) := by
+          simpa [ht1arrow] using ht1
+        have ht2 : isRequiredType (t21.arrow t22) := by
+          simpa [ht2arrow] using ht2
+        have hReqFirstSome1 : ∃ Afirst1, require ((x, t') :: Γ1) e t12 = some Afirst1 := by
+          cases hcheck1 : require ((x, t') :: Γ1) e t12 with
+          | none => simp [require, ht1, hcheck1, ht1arrow] at h1
+          | some _ => simp
+        have hReqFirstSome2 : ∃ Afirst2, require ((x, t') :: Γ2) e t22 = some Afirst2 := by
+          cases hcheck2 : require ((x, t') :: Γ2) e t22 with
+          | none => simp [require, ht2, hcheck2, ht2arrow] at h2
+          | some _ => simp
+        rcases hReqFirstSome1 with ⟨Afirst1, hReqFirst1Some⟩
+        rcases hReqFirstSome2 with ⟨Afirst2, hReqFirst2Some⟩
+        have hAddSome1 : ∃ Add1, Afirst1.add x t' = some Add1 := by
+          cases hA1 : Afirst1.add x t' with
+          | none => simp [require, ht1, ht1arrow, hReqFirst1Some, hA1] at h1
+          | some Add1 => simp
+        have hAddSome2 : ∃ Add2, Afirst2.add x t' = some Add2 := by
+          cases hA2 : Afirst2.add x t' with
+          | none => simp [require, ht2, ht2arrow, hReqFirst2Some, hA2] at h2
+          | some Add2 => simp
+        rcases hAddSome1 with ⟨Add1, hAddSome1⟩
+        rcases hAddSome2 with ⟨Add2, hAddSome2⟩
+        have hlookup1 : ∃ tlook1, Add1.lookup x = some tlook1 := by
+          cases hlookup1 : Add1.lookup x with
+          | none => simp [require, ht1, ht1arrow, hReqFirst1Some, hAddSome1, hlookup1] at h1
+          | some tlook1 => simp
+        have hlookup2 : ∃ tlook2, Add2.lookup x = some tlook2 := by
+          cases hlookup2 : Add2.lookup x with
+          | none => simp [require, ht2, ht2arrow, hReqFirst2Some, hAddSome2, hlookup2] at h2
+          | some tlook2 => simp
+        rcases hlookup1 with ⟨tlook1, hlookup1some⟩
+        rcases hlookup2 with ⟨tlook2, hlookup2some⟩
+        have htlooksamekind : tlook1 ~ tlook2 := by
+          have hyp1 : ((Afirst1.add x t') >>= (fun atenv => (atenv.lookup x)) = some tlook1) := by
+            simp [hAddSome1, hlookup1some]
+          have hyp2 : ((Afirst2.add x t') >>= (fun atenv => (atenv.lookup x)) = some tlook2) := by
+            simp [hAddSome2, hlookup2some]
+          have htt1 : (t' ~ tlook1) = true := addAssociatedTypeSameKind hyp1
+          have ht1t : (tlook1 ~ t') = true := sameKind_symm htt1
+          have htt2 : (t' ~ tlook2) = true := addAssociatedTypeSameKind hyp2
+          exact sameKind_transitive ht1t htt2
+        have haddEnvSameKind : ((x, tlook1) :: Γ1) ~ ((x, tlook2) :: Γ2) :=
+          sameKindTEnvAfterAddingSameKindType hΓ htlooksamekind
+        have hsub1 : tlook1 <: t11 := by
+          cases hsub1 : tlook1 <: t11 with
+          | true => simp
+          | false => simp [
+            require, ht1, ht1arrow, hsub1, hReqFirst1Some, hAddSome1, hlookup1some] at h1
+        have hsub2 : tlook2 <: t21 := by
+          cases hsub2 : tlook2 <: t21 with
+          | true => simp
+          | false => simp [
+            require, ht2, ht2arrow, hsub2, hReqFirst2Some, hAddSome2, hlookup2some] at h2
+        have hcheck1 : ∃ Ab1, (require ((x, tlook1) :: Γ1) e t12) = some Ab1 := by
+          cases hcheck1 : require ((x, tlook1) :: Γ1) e t12 with
+          | none => simp [
+            require, ht1, ht1arrow, hsub1, hcheck1, hReqFirst1Some, hAddSome1, hlookup1some] at h1
+          | some _ => simp
+        have hcheck2 : ∃ Ab2, (require ((x, tlook2) :: Γ2) e t22) = some Ab2 := by
+          cases hcheck2 : require ((x, tlook2) :: Γ2) e t22 with
+          | none => simp [
+            require, ht2, ht2arrow, hcheck2, hReqFirst2Some, hAddSome2, hlookup2some] at h2
+          | some _ => simp
+        rcases hcheck1 with ⟨Ab1, hcheck1some⟩
+        rcases hcheck2 with ⟨Ab2, hcheck2some⟩
+        have htbsamekind : t12 ~ t22 := by
+          have hreqCombine : (isRequiredType t12) ∧ (isRequiredType t22)
+                            ∧ (∃A1, require ((x, tlook1) :: Γ1) e t12 = some A1)
+                            ∧ (∃A2, require ((x, tlook2) :: Γ2) e t22 = some A2) := by
+            have hreq1 : isRequiredType t12 := by
+              by_cases hreq1 : isRequiredType t12
+              · exact hreq1
+              · simp [isRequiredType, hreq1] at ht1
+            have hreq2 : isRequiredType t22 := by
+              by_cases hreq2 : isRequiredType t22
+              · exact hreq2
+              · simp [isRequiredType, hreq2] at ht2
+            simp [hreq1, hreq2, hcheck1some, hcheck2some]
+          rcases (ih haddEnvSameKind) with ⟨_, hrequireSameKind⟩
+          exact hrequireSameKind hreqCombine
+        have htpsamekind : t11 ~ t21 := by
+          have hsub1' : tlook1 ~ t11 := by
+            simp [hsub1, subtypeIsSameKind]
+          have hsub2' : tlook2 ~ t21 := by
+            simp [hsub2, subtypeIsSameKind]
+          have hsub1'' : t11 ~ tlook1 := by
+            simp [hsub1', sameKind_symm]
+          have hin : t11 ~ tlook2 := sameKind_transitive hsub1'' htlooksamekind
+          exact sameKind_transitive hin hsub2'
+        simp [htbsamekind, htpsamekind, MyType.sameKind, ht1arrow, ht2arrow]
+    | app e1 e2 => sorry -- todo
