@@ -97,64 +97,6 @@ theorem sameKindTypesExistBounds {t1 t2 : MyType}
       · simp [MyType.lowerBound, hua, hlb]
       · simp [MyType.upperBound, hla, hub]
 
-lemma boundsExistsSameKindTypes {t1 t2 tl tu : MyType}
-    (h : MyType.lowerBound t1 t2 = some tl ∨
-     MyType.upperBound t1 t2 = some tu) :
-    (t1 ~ t2) = true := by
-  cases ht1: t1 with
-  | enum =>
-    cases ht2: t2 with
-    | enum => simp [MyType.sameKind]
-    | int => simp [MyType.sameKind]
-    | arrow a b => simp [MyType.lowerBound, MyType.upperBound, ht1, ht2] at h
-  | int =>
-    cases ht2: t2 with
-    | enum => simp [MyType.sameKind]
-    | int => simp [MyType.sameKind]
-    | arrow a b => simp [MyType.lowerBound, MyType.upperBound, ht1, ht2] at h
-  | arrow a b =>
-    cases ht2: t2 with
-    | enum => simp [MyType.lowerBound, MyType.upperBound, ht1, ht2] at h
-    | int => simp [MyType.lowerBound, MyType.upperBound, ht1, ht2] at h
-    | arrow c d =>
-      cases hlac : MyType.lowerBound a c with
-      | none =>
-        cases huac : MyType.upperBound a c with
-        | none => simp [MyType.lowerBound, MyType.upperBound, ht1, ht2, hlac, huac] at h
-        | some tuac =>
-          cases hlbd : MyType.lowerBound b d with
-          | none => simp [MyType.lowerBound, MyType.upperBound, ht1, ht2, hlac, hlbd] at h
-          | some tlbd =>
-            have huacl : a.lowerBound c = some tlbd ∨ a.upperBound c = some tuac := by simp [huac]
-            have h1 : (a ~ c) = true := boundsExistsSameKindTypes huacl
-            have hlbdu : b.lowerBound d = some tlbd ∨ b.upperBound d = some tuac := by simp [hlbd]
-            have h2 : (b ~ d) = true := boundsExistsSameKindTypes hlbdu
-            simp [h1, h2, MyType.sameKind]
-      | some tlac =>
-        cases hubd : MyType.upperBound b d with
-        | some tubd =>
-          have hlacu : a.lowerBound c = some tlac ∨ a.upperBound c = some tubd := by simp [hlac]
-          have hubdl : b.lowerBound d = some tlac ∨ b.upperBound d = some tubd := by simp [hubd]
-          have h1 : (a ~ c) = true := boundsExistsSameKindTypes hlacu
-          have h2 : (b ~ d) = true := boundsExistsSameKindTypes hubdl
-          simp [h1, h2, MyType.sameKind]
-        | none =>
-          cases huac : MyType.upperBound a c with
-          | none => simp [MyType.lowerBound, MyType.upperBound, ht1, ht2, hubd, huac] at h
-          | some tuac =>
-            cases hlbd : MyType.lowerBound b d with
-            | none => simp [MyType.lowerBound, MyType.upperBound, ht1, ht2, hubd, hlbd] at h
-            | some tlbd =>
-              have huacl : a.lowerBound c = some tlbd ∨ a.upperBound c = some tuac := by simp [huac]
-              have hlbdu : b.lowerBound d = some tlbd ∨ b.upperBound d = some tuac := by simp [hlbd]
-              have h1 : (a ~ c) = true := boundsExistsSameKindTypes huacl
-              have h2 : (b ~ d) = true := boundsExistsSameKindTypes hlbdu
-              simp [h1, h2, MyType.sameKind]
-
-lemma boundTypesAreSameKind {t1 t2 tl tu : MyType} :
-  ((MyType.lowerBound t1 t2 = some tl) -> t1 ~ tl ∧ t2 ~ tl) ∧
-  ((MyType.upperBound t1 t2 = some tu) -> t1 ~ tu ∧ t2 ~ tu) := sorry
-
 lemma subtypeIsSameKind (t1 t2 : MyType) (h : t1 <: t2) : t1 ~ t2 := by
   cases t1 with
   | enum =>
@@ -795,4 +737,107 @@ lemma checkOrRequireSameKind
           have hin : t11 ~ tlook2 := sameKind_transitive hsub1'' htlooksamekind
           exact sameKind_transitive hin hsub2'
         simp [htbsamekind, htpsamekind, MyType.sameKind, ht1arrow, ht2arrow]
-    | app e1 e2 => sorry -- todo
+    | app e1 e2 ih1 ih2 =>
+      intro Γ1 Γ2 t1 t2 hΓ
+      constructor
+      · intro h
+        rcases h with ⟨⟨A1, h1⟩, ⟨A2, h2⟩⟩
+        have hCheckFSome1 : ∃ tF AF, check Γ1 e1 = some (tF, AF) := by
+          cases hcheck1 : check Γ1 e1 with
+          | none => simp [check, hcheck1] at h1
+          | some pair => cases pair with | mk _ _ => simp
+        have hCheckFSome2 : ∃ tF AF, check Γ2 e1 = some (tF, AF) := by
+          cases hcheck2 : check Γ2 e1 with
+          | none => simp [check, hcheck2] at h2
+          | some pair => cases pair with | mk _ _ => simp
+        rcases hCheckFSome1 with ⟨tF1, AF1, hCheckF1Some⟩
+        rcases hCheckFSome2 with ⟨tF2, AF2, hCheckF2Some⟩
+        have htF1Arrow : ∃ tF11 tF12, tF1 = .arrow tF11 tF12 := by
+          cases htF1c : tF1 with
+          | enum | int => simp [check, hCheckF1Some, htF1c] at h1
+          | arrow _ _ => simp
+        have htF2Arrow : ∃ tF21 tF22, tF2 = .arrow tF21 tF22 := by
+          cases htF2c : tF2 with
+          | enum | int => simp [check, hCheckF2Some, htF2c] at h2
+          | arrow _ _ => simp
+        rcases htF1Arrow with ⟨tF11, tF12, htF1Arrow⟩
+        rcases htF2Arrow with ⟨tF21, tF22, htF2Arrow⟩
+        have hReqPSome1 : ∃ Areq1, require Γ1 e2 tF11 = some Areq1 := by
+          cases hreq1 : require Γ1 e2 tF11 with
+          | none => simp [check, hCheckF1Some, htF1Arrow, hreq1] at h1
+          | some _ => simp
+        have hReqPSome2 : ∃ Areq2, require Γ2 e2 tF21 = some Areq2 := by
+          cases hreq2 : require Γ2 e2 tF21 with
+          | none => simp [check, hCheckF2Some, htF2Arrow, hreq2] at h2
+          | some _ => simp
+        rcases hReqPSome1 with ⟨Areq1, hReqPSome1⟩
+        rcases hReqPSome2 with ⟨Areq2, hReqPSome2⟩
+        have hAtSome1 : ∃ Ares, (AF1 ⋃ Areq1) = some Ares := by
+          cases hAt1 : AF1 ⋃ Areq1 with
+          | none => simp [check, hCheckF1Some, htF1Arrow, hReqPSome1, hAt1] at h1
+          | some Ares => simp
+        have hAtSome2 : ∃ Ares, (AF2 ⋃ Areq2) = some Ares := by
+          cases hAt2 : AF2 ⋃ Areq2 with
+          | none => simp [check, hCheckF2Some, htF2Arrow, hReqPSome2, hAt2] at h2
+          | some Ares => simp
+        rcases hAtSome1 with ⟨Ares1, hAtSome1⟩
+        rcases hAtSome2 with ⟨Ares2, hAtSome2⟩
+        have hResType1: tF12 = t1 ∧ Ares1 = A1 := by
+          simpa [check, hCheckF1Some, htF1Arrow, hReqPSome1, hAtSome1] using h1
+        have hResType2: tF22 = t2 ∧ Ares2 = A2 := by
+          simpa [check, hCheckF2Some, htF2Arrow, hReqPSome2, hAtSome2] using h2
+        rcases hResType1 with ⟨ht1, hA1⟩
+        rcases hResType2 with ⟨ht2, hA2⟩
+        have htFSameKind : tF1 ~ tF2 := by
+          have hcheckCombine : (∃A1, check Γ1 e1 = some (tF1, A1))
+                            ∧ (∃A2, check Γ2 e1 = some (tF2, A2)) := by
+            simp [hCheckF1Some, hCheckF2Some]
+          rcases (ih1 hΓ) with ⟨hcheckSameKind, _⟩
+          exact hcheckSameKind hcheckCombine
+        have htFx2SameKind : (tF11 ~ tF21) = true ∧ (tF12 ~ tF22) = true := by
+          simpa [htF1Arrow, htF2Arrow, MyType.sameKind] using htFSameKind
+        rcases htFx2SameKind with ⟨_, htRetSameKind⟩
+        simpa [ht1, ht2] using htRetSameKind
+      · intro h
+        rcases h with ⟨ht1, ht2, ⟨A1, h1⟩, ⟨A2, h2⟩⟩
+        have hCheckFSomeArrow1 : ∃ tF11 tF22 A_, check Γ1 e1 = some (.arrow tF11 tF22, A_) := by
+          cases hcheck1 : check Γ1 e1 with
+          | none => simp [require, ht1, hcheck1] at h1
+          | some pair => cases hpair : pair with
+            | mk ta _ => cases hta : ta with
+              | enum | int => simp [require, ht1, hcheck1, hpair, hta] at h1
+              | arrow _ _ => simp
+        have hCheckFSomeArrow2 : ∃ tF21 tF22 A_, check Γ2 e1 = some (.arrow tF21 tF22, A_) := by
+          cases hcheck2 : check Γ2 e1 with
+          | none => simp [require, ht2, hcheck2] at h2
+          | some pair => cases hpair : pair with
+            | mk ta _ => cases hta : ta with
+              | enum | int => simp [require, ht2, hcheck2, hpair, hta] at h2
+              | arrow _ _ => simp
+        rcases hCheckFSomeArrow1 with ⟨tF11, tF12, Afirst1, hCheckFSomeArrow1⟩
+        rcases hCheckFSomeArrow2 with ⟨tF21, tF22, Afirst2, hCheckFSomeArrow2⟩
+        have hForced1 : tF12 ==> t1 := by
+          cases hforced1 : tF12 ==> t1 with
+          | true => simp
+          | false => simp [require, ht1, hforced1, hCheckFSomeArrow1] at h1
+        have hForced2 : tF22 ==> t2 := by
+          cases hforced2 : tF22 ==> t2 with
+          | true => simp
+          | false => simp [require, ht2, hforced2, hCheckFSomeArrow2] at h2
+        have hArrowSameKind : (tF11 ~ tF21) = true ∧ (tF12 ~ tF22) = true := by
+          have hcheckCombine : (∃A1, check Γ1 e1 = some (.arrow tF11 tF12, A1))
+                            ∧ (∃A2, check Γ2 e1 = some (.arrow tF21 tF22, A2)) := by
+            simp [hCheckFSomeArrow1, hCheckFSomeArrow2]
+          rcases (ih1 hΓ) with ⟨hcheckSameKind, _⟩
+          simpa [MyType.sameKind] using (hcheckSameKind hcheckCombine)
+        rcases hArrowSameKind with ⟨_, htx2SameKind⟩
+        have htF12t1sub : t1 <: tF12 := by simpa [forcedRequiredType, ht1] using hForced1
+        have htF22t2sub : t2 <: tF22 := by simpa [forcedRequiredType, ht2] using hForced2
+        have htF12t1SameKind : tF12 ~ t1 := by
+          simp [htF12t1sub, subtypeIsSameKind]
+        have htF22t2SameKind : tF22 ~ t2 := by
+          simp [htF22t2sub, subtypeIsSameKind]
+        have ht1tF12SameKind : t1 ~ tF12 := by
+          simp [htF12t1SameKind, sameKind_symm]
+        have hin : t1 ~ tF22 := sameKind_transitive ht1tF12SameKind htx2SameKind
+        exact sameKind_transitive hin htF22t2SameKind
