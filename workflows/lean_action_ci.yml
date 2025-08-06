@@ -13,6 +13,9 @@ permissions:
 
 jobs:
   build:
+    defaults:
+      runs:
+        working-directory: ./c2rust/enum/Subtype-Inference/Prover
     runs-on: ubuntu-latest
 
     steps:

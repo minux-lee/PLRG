@@ -14,6 +14,9 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    defaults:
+      runs:
+        working-directory: ./c2rust/enum/Subtype-Inference/Prover
     steps:
     - name: lean-release-tag action
       uses: leanprover-community/lean-release-tag@v1
