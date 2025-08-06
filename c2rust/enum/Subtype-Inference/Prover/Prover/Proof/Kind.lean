@@ -119,6 +119,91 @@ lemma subtypeIsSameKind (t1 t2 : MyType) (h : t1 <: t2) : t1 ~ t2 := by
       simp [MyType.sameKind, subtypeIsSameKind c a h₁, subtypeIsSameKind b d h₂]
 termination_by sizeOf t1 + sizeOf t2
 
+lemma boundSubType {t1 t2 t3 : MyType} :
+  ((MyType.lowerBound t1 t2 = some t3) -> (t3 <: t1) ∧ (t3 <: t2))
+  ∧ (MyType.upperBound t1 t2 = some t3 -> (t1 <: t3) ∧ (t2 <: t3)) := by
+  revert t2 t3
+  induction t1 with
+  | enum =>
+    intro t2 t3; cases t2 <;> cases t3 <;> simp [MyType.lowerBound, MyType.upperBound, isSubType]
+  | int =>
+    intro t2 t3; cases t2 <;> cases t3 <;> simp [MyType.lowerBound, MyType.upperBound, isSubType]
+  | arrow a b ihA ihB =>
+    intro t2 t3;
+    constructor
+    · intro h
+      have ht2Arrow : ∃ c d, t2 = .arrow c d := by
+        cases t2 with
+        | enum | int => simp [MyType.lowerBound] at h
+        | arrow c d => exact ⟨c, d, rfl⟩
+      rcases ht2Arrow with ⟨c, d, rfl⟩
+      have hleftUpper : ∃ t1', MyType.upperBound a c = some t1' := by
+        cases hul : MyType.upperBound a c with
+        | none =>
+          cases hlr : MyType.lowerBound b d with
+          | none | some _ => simp [MyType.lowerBound, hul, hlr] at h
+        | some _ => simp
+      have hrightLower : ∃ t2', MyType.lowerBound b d = some t2' := by
+        cases hlr : MyType.lowerBound b d with
+        | none =>
+          cases hul : MyType.upperBound a c with
+          | none | some _ => simp [MyType.lowerBound, hul, hlr] at h
+        | some _ => simp
+      rcases hleftUpper with ⟨t1', hleft⟩
+      rcases hrightLower with ⟨t2', hright⟩
+      have hsub : .arrow t1' t2' = t3 := by simpa [MyType.lowerBound, hleft, hright] using h
+      rcases ihA with ⟨_, hA2⟩
+      rcases ihB with ⟨hB1, _⟩
+      have hlower : (a <: t1') = true ∧ (c <: t1') = true := hA2 hleft
+      rcases hlower with ⟨ha, hc⟩
+      have hupper : (t2' <: b) = true ∧ (t2' <: d) = true := hB1 hright
+      rcases hupper with ⟨hb, hd⟩
+      have hsub1 : .arrow t1' t2' <: a.arrow b := by
+        simp [isSubType, ha, hb]
+      have hsub2 : .arrow t1' t2' <: c.arrow d := by
+        simp [isSubType, hc, hd]
+      have hsub1' : t3 <: a.arrow b := by
+        simpa [hsub] using hsub1
+      have hsub2' : t3 <: c.arrow d := by
+        simpa [hsub] using hsub2
+      exact ⟨hsub1', hsub2'⟩
+    · intro h
+      have ht2Arrow : ∃ c d, t2 = .arrow c d := by
+        cases t2 with
+        | enum | int => simp [MyType.upperBound] at h
+        | arrow c d => exact ⟨c, d, rfl⟩
+      rcases ht2Arrow with ⟨c, d, rfl⟩
+      have hleftUpper : ∃ t1', MyType.lowerBound a c = some t1' := by
+        cases hul : MyType.lowerBound a c with
+        | none =>
+          cases hlr : MyType.upperBound b d with
+          | none | some _ => simp [MyType.upperBound, hul, hlr] at h
+        | some _ => simp
+      have hrightLower : ∃ t2', MyType.upperBound b d = some t2' := by
+        cases hlr : MyType.upperBound b d with
+        | none =>
+          cases hul : MyType.lowerBound a c with
+          | none | some _ => simp [MyType.upperBound, hul, hlr] at h
+        | some _ => simp
+      rcases hleftUpper with ⟨t1', hleft⟩
+      rcases hrightLower with ⟨t2', hright⟩
+      have hsub : .arrow t1' t2' = t3 := by simpa [MyType.upperBound, hleft, hright] using h
+      rcases ihA with ⟨hA1, _⟩
+      rcases ihB with ⟨_, hB2⟩
+      have hlower : (t1' <: a) = true ∧ (t1' <: c) = true := hA1 hleft
+      rcases hlower with ⟨ha, hc⟩
+      have hupper : (b <: t2') = true ∧ (d <: t2') = true := hB2 hright
+      rcases hupper with ⟨hb, hd⟩
+      have hsub1 : a.arrow b <: .arrow t1' t2' := by
+        simp [isSubType, ha, hb]
+      have hsub2 : c.arrow d <: .arrow t1' t2' := by
+        simp [isSubType, hc, hd]
+      have hsub1' : a.arrow b <: t3 := by
+        simpa [hsub] using hsub1
+      have hsub2' : c.arrow d <: t3 := by
+        simpa [hsub] using hsub2
+      exact ⟨hsub1', hsub2'⟩
+
 -- TypeEnv
 
 theorem sameKindTEnvAfterAddingSameKindType
@@ -321,21 +406,74 @@ lemma requireBinopIsInt
         | arrow l r =>
           simp [hcheck', ht1, isSubType, ht] at hin1
 
+lemma replaceAndLookupSame
+    {A : AssociatedTypeEnv} {x : String} {t t' : MyType} :
+    (h : AssociatedTypeEnv.lookup
+      (A.map (fun (y, ty) => if y = x then (y, t) else (y, ty))) x = some t') ->
+    t = t' := by
+  induction A with
+  | nil =>
+    intro h
+    have hEmpty : ([].map (fun (y, ty) => if y = x then (y, t) else (y, ty))) = [] := by simp
+    have hlookEmpty : AssociatedTypeEnv.lookup [] x = none := by
+      simp [AssociatedTypeEnv.lookup]
+    simp [hEmpty, hlookEmpty] at h
+  | cons pair A' ih =>
+    intro h
+    cases hpair : pair with
+    | mk y ty =>
+      by_cases hy : y = x
+      · simpa [AssociatedTypeEnv.lookup, hy, hpair] using h
+      · have hInductive :
+          AssociatedTypeEnv.lookup
+            (A'.map (fun (y, ty) => if y = x then (y, t) else (y, ty))) x = some t' := by
+          simpa [AssociatedTypeEnv.lookup, hy, hpair] using h
+        exact ih hInductive
+
 lemma addAssociatedTypeSameKind
     {A : AssociatedTypeEnv} {x : String} {t t' : MyType}
     (h : ((A.add x t) >>= (fun atenv => (atenv.lookup x)) = some t')) :
     t ~ t' := by
-  cases hAlook : A.lookup x with
+  have hAddSome : ∃ Aadd, (A.add x t) = some Aadd := by
+    cases hadd: (A.add x t) with
+    | none => simp [hadd] at h
+    | some Aadd => simp
+  rcases hAddSome with ⟨Aadd, hAddSome⟩
+  have hLookup : ∃ tlook, Aadd.lookup x = some tlook := by
+    cases hlookup: Aadd.lookup x with
+    | none => simp [hlookup, hAddSome] at h
+    | some _ => simp
+  rcases hLookup with ⟨tlook, hLookup⟩
+  have hlook : tlook = t' := by
+    simpa [hAddSome, hLookup] using h
+  cases hlookup : A.lookup x with
   | none =>
-      have h' : A.add x t = some ((x, t) :: A) := by simp [AssociatedTypeEnv.add, hAlook]
-      have h'' : AssociatedTypeEnv.lookup ((x, t) :: A) x = some t := by
-        simp [AssociatedTypeEnv.lookup]
-      have h''' : (A.add x t) >>= (fun atenv => (atenv.lookup x)) = some t := by
-        simp [h', h'']
-      have tsame : t = t' := by
-        simpa [h''' ] using h
-      simp [tsame]
-  | some t1 => sorry
+    have haddlook : AssociatedTypeEnv.lookup ((x, t) :: A) x = some t := by
+      simp [AssociatedTypeEnv.lookup]
+    have haddnaive : (x, t) :: A = Aadd := by simpa [hlookup, AssociatedTypeEnv.add] using hAddSome
+    have haaddlook : (Aadd.lookup x) = some t := by simpa [haddnaive] using haddlook
+    have htlookt : tlook = t := by simpa [hLookup] using haaddlook
+    have htt' : t = t' := by simpa [htlookt] using hlook
+    simp [htt', sameKind_refl]
+  | some tlookup =>
+    have hlowerBoundSome : ∃ tl, MyType.lowerBound t tlookup = some tl := by
+      cases hlower: MyType.lowerBound t tlookup with
+      | none => simp [AssociatedTypeEnv.add, hlookup, hlower] at hAddSome
+      | some tl => simp
+    rcases hlowerBoundSome with ⟨tl, hlowerBoundSome⟩
+    rcases boundSubType with ⟨hLower, hUpper⟩
+    have hlower : (tl <: t) ∧ (tl <: tlookup) := hLower hlowerBoundSome
+    rcases hlower with ⟨hlower, _⟩
+    have hAddMap : Aadd = A.map (fun (y, ty) => if y = x then (y, tl) else (y, ty)) := by
+      simpa [AssociatedTypeEnv.add, hlookup, hlowerBoundSome] using hAddSome.symm
+    have hreplaceAndLookup :
+      AssociatedTypeEnv.lookup (
+        A.map (fun (y, ty) => if y = x then (y, tl) else (y, ty))) x = some t' := by
+      simpa [hAddMap, hlook] using hLookup
+    have hreplace : tl = t' := replaceAndLookupSame hreplaceAndLookup
+    have hsub : t' <: t := by simpa [hreplace.symm] using hlower
+    have hres : t' ~ t := subtypeIsSameKind t' t hsub
+    exact sameKind_symm hres
 
 lemma checkDecFirstBodySome
     {Γ : TypeEnv} {x : String} {t t' : MyType} {e1 e2 : Expr} {A : AssociatedTypeEnv}

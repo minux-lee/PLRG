@@ -18,16 +18,14 @@ instance : ToString AssociatedTypeEnv where
     "]"
 
 def AssociatedTypeEnv.lookup (atenv : AssociatedTypeEnv) (x : String) : Option MyType :=
-  atenv.find? (fun (y, _) => x = y) |>.map (·.2)
+  atenv.find? (fun (y, _) => y = x) |>.map (·.2)
 
 def AssociatedTypeEnv.add
   (atenv : AssociatedTypeEnv) (x : String) (t : MyType) : Option AssociatedTypeEnv :=
     match atenv.lookup x with
     | .none => some ((x, t) :: atenv)
-    | .some t' =>
-      match (MyType.lowerBound t t') with
-      | .some t'' => some (atenv.map (fun (y, ty) => if y = x then (y, t'') else (y, ty)))
-      | .none => none
+    | .some t' => (MyType.lowerBound t t').map
+              fun t'' => atenv.map (fun (y, ty) => if y = x then (y, t'') else (y, ty))
 
 def AssociatedTypeEnv.union (env1 env2 : AssociatedTypeEnv) : Option AssociatedTypeEnv :=
   env2.foldl
