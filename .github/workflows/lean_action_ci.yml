@@ -22,14 +22,12 @@ jobs:
 
       # Sets up Lean/elan etc. (runs at repo root; that's OK for setup)
       - uses: leanprover/lean-action@v1
-
+        with:
+          lake-package-directory: c2rust/enum/Subtype-Inference/Prover
+          
       # Build & test your project in (WD)
       - name: Build
         run: lake build
 
       - name: Test
         run: lake test
-
-      # If you still want doc generation via the action, keep it;
-      # note working-directory doesn't apply to `uses:` steps.
-      - uses: leanprover-community/docgen-action@v1
