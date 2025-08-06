@@ -13,23 +13,13 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./c2rust/enum/Subtype-Inference/Prover
 
     steps:
       - uses: actions/checkout@v4
-
-      # Sets up Lean/elan etc. (runs at repo root; that's OK for setup)
       - uses: leanprover/lean-action@v1
 
-      # Build & test your project in (WD)
       - name: Build
-        run: lake build
+        run: lake build -C ./c2rust/enum/Subtype-Inference/Prover
 
       - name: Test
-        run: lake test
-
-      # If you still want doc generation via the action, keep it;
-      # note working-directory doesn't apply to `uses:` steps.
-      - uses: leanprover-community/docgen-action@v1
+        run: lake test -C ./c2rust/enum/Subtype-Inference/Prover
