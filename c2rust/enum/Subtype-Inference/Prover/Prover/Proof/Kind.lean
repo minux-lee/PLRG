@@ -469,7 +469,7 @@ lemma checkDecFirstBodySome
     cases pair1 with
     | mk t1 A1 => simp
 
-lemma checkOrRequireSameKind
+theorem checkOrRequireSameKind
     {Γ1 Γ2 : TypeEnv} {e : Expr} {t1 t2 : MyType}
     (hΓ : (Γ1 ~ Γ2) = true) :
     (((∃A1, check Γ1 e = some (t1, A1)) ∧ (∃A2, check Γ2 e = some (t2, A2))) -> t1 ~ t2)
