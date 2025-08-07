@@ -477,4 +477,20 @@ The abstract syntax of MIR with function pointers is shown in Fig~\ref{fig:mir-f
 \label{fig:mir-funcptrs-absyn}
 \end{figure}
 
+\subsection {Generating Type Constraints}
+
+The rules for type constraints in MIR with function pointers are shown in Fig~\ref{fig:mir-funcptrs-type-constraints}.
+
+\begin{figure}[ht]
+\begin{framed}
+\[\cdots\]
+\[\begin{array}{@{}ccl@{}}
+  \ifrule{x=g}{\forall \overline{\tau}\rightarrow\tau',\ \cons{x}\subseteq\consp{\overline{\floor{\tau}}}{\ceil{\tau'}}}\\
+  \ifrule{x=y(\overline{y'}); B}{\forall \overline{\tau}\rightarrow\tau',\ \cons{y}\subseteq\consp{\overline{\floor{\tau}}}{\ceil{\tau'}}\quad\land\quad \forall \overline{\tau'},\ \cons{y'}\subseteq\overline{\floor{\tau'}}\quad\land\quad \forall \overline{\tau'},\ \cons{B}\subseteq\overline{\floor{\tau'}}}
+\end{array}\]
+\end{framed}
+\caption{MIR Type Constraints with Function Pointers}
+\label{fig:mir-funcptrs-type-constraints}
+\end{figure}
+
 \end{document}
