@@ -133,8 +133,8 @@ lemma boundSubType {t1 t2 t3 : MyType} :
       have hsub : .arrow t1' t2' = t3 := by simpa [MyType.lowerBound, hleft, hright] using h
       rcases ihA with ⟨_, hA2⟩
       rcases ihB with ⟨hB1, _⟩
-      have ⟨ha, hc⟩ : (a <: t1') = true ∧ (c <: t1') = true := hA2 hleft
-      have ⟨hb, hd⟩ : (t2' <: b) = true ∧ (t2' <: d) = true := hB1 hright
+      obtain ⟨ha, hc⟩ := hA2 hleft
+      obtain ⟨hb, hd⟩ := hB1 hright
       have hsub1 : .arrow t1' t2' <: a.arrow b := by simp [isSubType, ha, hb]
       have hsub2 : .arrow t1' t2' <: c.arrow d := by simp [isSubType, hc, hd]
       have hsub1' : t3 <: a.arrow b := by simpa [hsub] using hsub1
