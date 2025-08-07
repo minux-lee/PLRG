@@ -862,11 +862,8 @@ theorem checkOrRequireSameKind
           simpa [MyType.sameKind] using (hcheckSameKind hcheckCombine)
         have htF12t1sub := by simpa [forcedRequiredType, ht1] using hForced1
         have htF22t2sub := by simpa [forcedRequiredType, ht2] using hForced2
-        have htF12t1SameKind : tF12 ~ t1 := by
-          simp [htF12t1sub, subtypeIsSameKind]
-        have htF22t2SameKind : tF22 ~ t2 := by
-          simp [htF22t2sub, subtypeIsSameKind]
-        have ht1tF12SameKind : t1 ~ tF12 := by
-          simp [htF12t1SameKind, sameKind_symm]
+        have ht2tF22SameKind := subtypeIsSameKind t2 tF22 htF22t2sub
+        have htF22t2SameKind := sameKind_symm ht2tF22SameKind
+        have ht1tF12SameKind := subtypeIsSameKind t1 tF12 htF12t1sub
         have hin := sameKind_transitive ht1tF12SameKind htx2SameKind
         exact sameKind_transitive hin htF22t2SameKind
