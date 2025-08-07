@@ -408,8 +408,8 @@ For the statement $s$:
   \ifrule{x:S}{\forall F\in S,\ \cons{x.F}\subseteq\cons{S.F}}\\
   \ifrule{x.F=y}{\cons{y} \subseteq \cons{x.F}}\\
   \ifrule{x=y.F}{\cons{y.F} \subseteq \cons{x}}\\
-  \ifrule{x[x']=y}{\tau\subseteq\floor{y}\Rightarrow\tau[]\subseteq\floor{x}\quad\land\quad\forall\tau,\,\tau\subseteq\ceil{y}\Rightarrow\tau[]\subseteq\ceil{x}}\\
-  \ifrule{x=y[y']}{\tau[]\subseteq\floor{y}\Rightarrow\tau\subseteq\floor{x}\quad\land\quad\forall\tau,\,\tau[]\subseteq\ceil{y}\Rightarrow\tau\subseteq\ceil{x}}
+  \ifrule{x[x']=y}{\forall\tau,\,\tau\subseteq\floor{y}\Rightarrow\tau[]\subseteq\floor{x}\quad\land\quad\tau\subseteq\ceil{y}\Rightarrow\tau[]\subseteq\ceil{x}}\\
+  \ifrule{x=y[y']}{\forall\tau,\,\tau[]\subseteq\floor{y}\Rightarrow\tau\subseteq\floor{x}\quad\land\quad\tau[]\subseteq\ceil{y}\Rightarrow\tau\subseteq\ceil{x}}
 \end{array}
 \]
 \end{framed}
@@ -484,9 +484,28 @@ The rules for type constraints in MIR with function pointers are shown in Fig~\r
 \begin{figure}[ht]
 \begin{framed}
 \[\cdots\]
+For the function type $\overline{\tau}\rightarrow\tau'$:
 \[\begin{array}{@{}ccl@{}}
-  \ifrule{x=g}{\forall \overline{\tau}\rightarrow\tau',\ \cons{x}\subseteq\consp{\overline{\floor{\tau}}}{\ceil{\tau'}}}\\
-  \ifrule{x=y(\overline{y'}); B}{\forall \overline{\tau}\rightarrow\tau',\ \cons{y}\subseteq\consp{\overline{\floor{\tau}}}{\ceil{\tau'}}\quad\land\quad \forall \overline{\tau'},\ \cons{y'}\subseteq\overline{\floor{\tau'}}\quad\land\quad \forall \overline{\tau'},\ \cons{B}\subseteq\overline{\floor{\tau'}}}
+  \ifrule{\overline{\tau_1}\rightarrow\tau_1'\subseteq\overline{\tau_2}\rightarrow\tau_2'}{
+    \overline{\tau_2\subseteq\tau_1}\ \ \land\ \ \tau_1'\subseteq\tau_2'
+  }
+\end{array}\]
+For the function pointer $g$:
+\[
+\begin{gathered}
+  \ceil{g} = \floor{g} = \{ \overline {g.y} \rightarrow g.y_r\}
+\end{gathered}
+\]
+For the statement $s$:
+\[
+\begin{array}{@{}ccl@{}}
+  \ifrule{x=g}{\cons{g}\subseteq\cons{x}}\\
+\end{array}\]
+For the terminator $t$:
+\[\begin{array}{@{}ccl@{}}
+  \ifrule{x=y(\overline{y'}); B}{
+    \forall g\in\floor{y},\ \overline{\cons{y'}\subseteq\cons{g.y}}\ \land\ \cons{g.y_r}\subseteq\cons{x}
+  }
 \end{array}\]
 \end{framed}
 \caption{MIR Type Constraints with Function Pointers}
