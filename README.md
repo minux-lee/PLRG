@@ -3,7 +3,7 @@
 ### Reports
 
 - [Subtype-Inference.pdf](https://github.com/minux-lee/PLRG/blob/main/c2rust/enum/Subtype-Inference/subtype-inference.pdf)
-- [static-analyze.tex](https://github.com/minux-lee/PLRG/blob/main/c2rust/enum/Type-Constraint/static-analyze.tex)
+- [static-analyze.pdf](https://github.com/minux-lee/PLRG/blob/main/c2rust/enum/Type-Constraint/static-analyze.pdf)
 
 ### Lean Projects
 
